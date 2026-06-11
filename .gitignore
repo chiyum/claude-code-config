@@ -1,0 +1,63 @@
+# ===== 對話與工作狀態 =====
+projects/
+sessions/
+todos/
+tasks/
+history.jsonl
+shell-snapshots/
+session-env/
+file-history/
+paste-cache/
+plans/
+backups/
+debug/
+downloads/
+channels/
+
+# ===== 快取與遙測 =====
+cache/
+statsig/
+telemetry/
+ide/
+stats-cache.json
+mcp-needs-auth-cache.json
+*.lock
+
+# ===== 個人 / 機敏 =====
+.credentials.json
+*.credentials.json
+**/auth.json
+**/access.json
+**/.env
+**/.env.*
+
+# auto-memory（含 dev 帳密等個人脈絡）
+memory/
+
+# 本機覆寫設定
+settings.local.json
+
+# Slack webhook URL（機密）
+hooks/slack-webhook.url
+
+# ===== 團隊狀態（內部業務邏輯）=====
+teams/
+
+# ===== 插件執行資料 =====
+plugins/cache/
+plugins/data/
+plugins/*/cache/
+plugins/*/data/
+plugins/installed_plugins.json
+plugins/install-counts-cache.json
+plugins/known_marketplaces.json
+plugins/marketplaces/
+plugins/blocklist.json
+
+# ===== macOS =====
+.DS_Store
+
+# ===== Git 本身 =====
+# 保險：避免巢狀 repo
+**/.git/
+!/.git/
