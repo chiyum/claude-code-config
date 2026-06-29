@@ -41,6 +41,8 @@
    - architect 自動判斷「直接實作模式」或「三方案分析模式」；三方案模式會停下來等使用者選方案
    - **規格書必須同步更新**：architect 實作 code 變更時，必須同時更新該產品在 `~/.claude/products/<product>.md`「規格書與文件」區塊列出的相關規格檔（新需求 → 新增章節；行為變更 → 改該章節；廢棄功能 → 刪該章節）。code + 規格更新放在**同一個 commit**，避免下一個 session 的開發者（不論人或 Claude）看不到差異
    - 若需求屬於規格未涵蓋的新功能，或產品配置內未列任何規格檔 → architect 必須主動在回報時提出「缺規格書，請使用者決定要新增哪一份」，而不是默默跳過
+   - **重大技術決策立即記 ADR**：當這次工作包含值得記錄的決策（語言/框架/函式庫選型、重大架構模式、資料庫/儲存結構性決定、重大取捨、回滾成本高/不可逆、推翻先前決策）時，architect 在該 repo `docs/adr/` 寫一筆 ADR（範本與觸發門檻見 `~/.claude/DECISION_LOG.md`）並更新 `docs/adr/README.md`，與 code + 規格放**同一個 commit**。一般 bug 修復 / 小重構 / 照既有規格實作不需寫
+   - **先查工程知識庫、撞到坑就立即補卡**：architect / reviewer / qa 接到工作先 Read `~/.claude/knowledge/INDEX.md`，依涉及技術與問題類別讀命中的知識卡，避免重踩前人踩過的坑；工作中撞到非顯而易見的技術坑或確立有效模式，architect 當下在 `~/.claude/knowledge/` 補一張卡 + 回 INDEX 補列，與 code 同 commit（制度見 `knowledge/INDEX.md` 開頭）
    - architect 完成後 commit（commit message 用繁體中文）
    - **接著呼叫 `reviewer`**
    - reviewer 有意見 → 由主 Claude 把 reviewer 的問題清單回傳給 architect，兩者直到一致（最多回合 3 次，超過要回報使用者）

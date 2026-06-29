@@ -37,10 +37,15 @@ cp CLAUDE.md ~/.claude/CLAUDE.md
 cp settings.json ~/.claude/settings.json
 cp mcp.json ~/.claude/mcp.json
 cp .gitignore ~/.claude/.gitignore
+cp DECISION_LOG.md ~/.claude/DECISION_LOG.md
 
 # Agent 定義（建議全裝）
 mkdir -p ~/.claude/agents
 cp agents/*.md ~/.claude/agents/
+
+# 工程知識庫（成長系統，建議裝範本，之後由 agent 隨專案累積知識卡）
+mkdir -p ~/.claude/knowledge
+cp knowledge/*.md ~/.claude/knowledge/
 
 # Hook（選裝，需要 Slack 通知才裝）
 mkdir -p ~/.claude/hooks
@@ -109,6 +114,8 @@ claude
 | `agents/reviewer.md` | 審查員 agent：code review，抓安全、效能、邊界問題 | ✅ 推薦 |
 | `agents/qa.md` | QA agent：用 API + 瀏覽器自動化跑測試 | ✅ 推薦 |
 | `agents/pm.md` | PM agent：對照規格書做驗收，截圖回報 | ✅ 推薦 |
+| `DECISION_LOG.md` | ADR 決策紀錄制度：重大技術決策當下立即記，供日後查證 | ✅ 推薦 |
+| `knowledge/` | 工程知識庫（成長系統）：跨專案教訓 / 踩坑卡，agent 接任務先查、撞坑即補 | ✅ 推薦 |
 | `products/INDEX.md` | 產品索引，PM 用來查對應的產品配置 | ✅ 推薦 |
 | `products/example_product.md` | 範例產品配置（複製來用） | 📋 參考 |
 | `hooks/slack-notify.sh` | 每次 Claude 回覆後推 Slack 通知 | 🔔 選裝 |
