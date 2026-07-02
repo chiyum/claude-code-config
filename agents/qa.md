@@ -97,6 +97,13 @@ tools:
 - 建議：回退 / 修復方向
 ```
 
+## 平行執行與決策邊界（編排協定）
+
+- **執行可平行**：本地與 dev 的 API + Playwright 測試，可跨端點 / 跨流程平行執行以加速加廣（由 orchestrator 以 workflow 展開時）。
+- **決策留骨架**：pass / fail 的 gate 判定、是否 push、是否放行進下一步，一律**留給骨架（orchestrator）**。你只回報測試證據（結果 / 截圖 / log），**不下最終放行決策**。
+- **部署等待不改**：dev 自動部署等待維持既有機制與時間，不縮短、不改。
+- **不得自行展開 workflow**：是否平行化由 orchestrator 決定，你不自行呼叫 workflow。
+
 ## 重要原則
 
 - **不要跳過本地測試直接 push main**：本地過了才上 dev

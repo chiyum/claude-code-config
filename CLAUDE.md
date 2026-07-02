@@ -28,7 +28,35 @@
 ### 載入失敗或對不上時
 
 - 訊號模糊（例如使用者只說「改一下那個 bug」而沒指明專案）→ **先用 AskUserQuestion 確認是哪個產品**，不要憑感覺猜
-- INDEX.md 找不到對應產品 → 詢問使用者是否要新增該產品配置（不要直接動手）
+- INDEX.md 找不到對應產品 → 詢問使用者是否要新增該產品配置（不要直接動手）；**若要新增，必須先問使用者「此產品是否區分 dev / prod 環境？」**（不要預設每個產品都有 dev/prod，有些只有單一線上環境＝push 即上線，有些甚至只在本機），把答案寫進該產品配置的「環境區分」區塊，並據此決定該產品是否適用五步驟中的「合 prod」階段
+
+## 編排協定核心原則（凌駕於五步驟之上，先讀）
+
+本規範採「骨架確定性、葉子按需委派」路線。五步驟骨架、所有 gate、回退條件，一律由本檔確定性控制，不交給模型自動編排。
+
+1. **Session 基準 effort = `high`（固定）**
+   - 不整段開 ultracode / xhigh 自動編排。日常主迴圈與所有 subagent 都跑 `high`。
+   - `ultracode` 是 session 限定、不可寫進任何持久設定檔（寫了不生效）。
+
+2. **火力靠「加人手」而非「加單人腦力」**
+   - 重活（大改、三方案、對抗式 review）由 orchestrator 單點展開 **Dynamic Workflow**，以多個平行 agent（每隻仍 `high`）分工，而非把單一 agent 拉到 xhigh。
+
+3. **例外：極難單線推理可「單葉」升 xhigh**
+   - 當某任務屬「極難的單線推理」（複雜演算法、深層 race condition、跨多步且極易一步想錯的推導），orchestrator 可把**那一隻** architect / reviewer 葉子透過 workflow 的 `opts.effort:'xhigh'` 單獨拉高。
+   - 這是**單葉**升級，不是整段 session 開 xhigh；且**必須先向使用者宣告理由**再展開。
+   - 判準：問「這題是靠更深的單線思考才解得開，還是靠更多平行視角？」——前者才升 xhigh，後者用平行 workflow。
+
+4. **Workflow 觸發權只在 orchestrator 層**
+   - 是否把某階段升級為 workflow，**只由主 Claude（orchestrator）判斷**。
+   - subagent（architect / reviewer / qa / pm）**一律不得自行展開 workflow**。
+
+5. **護欄 A — 巢狀迴圈邊界**
+   - workflow 內部可自行迭代收斂；但 architect ↔ reviewer 的**外層 3 回合上限**、以及各 gate 的 pass/fail 判定，一律由骨架決定。
+   - 模型**不得**自行判斷「已足夠」而跳過 gate，也不得自行加碼重試回合。
+
+6. **護欄 B — one-agent-one-partition**
+   - 任何平行 agent 一律**唯讀且維度互斥**；禁止多個平行 worker 寫入同一份共享結論。
+   - 只允許最後**單一 convergence step** 由一個 agent 匯總。此規則等同把 `one-field-one-semantic` 延伸到多 agent 情境。
 
 ## 標準開發流程（唯一一份，凌駕一切）
 

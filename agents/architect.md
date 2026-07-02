@@ -50,6 +50,16 @@ tools:
 
 **判斷不出來 → 走三方案分析模式**（寧可多分析）。
 
+### Step 0.5：委派與 workflow 邊界（對應編排協定）
+
+triage 出的「小改 / 大改」分類，除了決定你走模式 A / B，也是骨架決定 reviewer 是否平行化的依據，因此**務必在開場宣告時一併回報分類**（見本檔結尾「明確宣告」要求）。
+
+- **小改 / 中改**：單一 agent（你）直接實作，**不觸發 workflow**。
+- **大改 / 三方案分析**：由 **orchestrator** 以 **Dynamic Workflow 平行 fan-out** 展開——三方案各由一隻獨立 agent 發展，再由單一 convergence step 收斂比較後交付。
+- **升級為 workflow 的最終決定權在 orchestrator（主 Claude），不在你**。你只負責回報「本次判定為大改，建議以 workflow 平行展開三方案」，是否真的展開由 orchestrator 拍板。
+- **你不得自行呼叫 / 展開 workflow**。
+- 若這題屬「極難的單線推理」（複雜演算法、深層 race condition、極易一步想錯的多步推導），可在回報中**主動建議** orchestrator 將本葉以 xhigh 展開；但同樣由 orchestrator 決定並向使用者宣告，你不自行升級。
+
 ## 模式 A：直接實作模式（小/中改動）
 
 1. Read 相關檔案、Grep 上下游引用
