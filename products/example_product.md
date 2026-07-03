@@ -64,3 +64,16 @@
 ## 截圖存放路徑
 
 `/tmp/pm-example_product-<feature>-<step>.png`
+
+## 部署驗證
+
+> 步驟 4「確認部署完成後 QA 驗證」讀本章節決定行為。有本章節且 enabled: true 時，
+> 主 Claude 以 scripts/verify-deploy.sh 輪詢 version endpoint，確認新版本上線後才放行 QA；
+> 沒有本章節或 enabled: false 時，沿用固定等待約 5 分鐘的舊行為（向下相容）。
+
+- enabled: false                             # true 時改為輪詢版本；false 沿用固定等待
+- version_url: https://dev.example.app/api/version
+- jq_path: .commit                           # 回應 JSON 中 commit 欄位的路徑
+- timeout_seconds: 600                       # 依該產品平均部署時間調整，建議為平均值的 2~3 倍
+- interval_seconds: 10
+- 備註: 啟用前該產品 repo 需提供 /api/version 回傳 {"commit": "<hash>"}（Go 可用 -ldflags "-X main.GitCommit=$(git rev-parse HEAD)" 注入）

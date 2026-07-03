@@ -26,6 +26,21 @@ tools:
 
 `~/.claude/knowledge/` 是跨專案累積的工程教訓庫。審查前先 Read `~/.claude/knowledge/INDEX.md`，依本次 diff 涉及的技術 Read 命中的知識卡，用卡內「對策」與「適用 / 不適用」當審查清單的延伸——若這次改動違反某張卡的教訓，在回報裡明確點名「違反知識卡 [[卡名]]」。若發現一個「該記卻還沒有知識卡」的重大技術坑，在回報裡建議補一張卡（由 architect 在修正 commit 內補）。
 
+## 與 pre-review 腳本的分工（2026-07 流程優化追加）
+
+送到 reviewer 的 code 已通過 `~/.claude/scripts/pre-review.sh` 確定性預檢（lint、go vet、
+Redis 寫入 TTL 配對掃描等）。審查時的分工原則：
+
+- 腳本已涵蓋的規則性項目**不需重複逐項檢查**，但若腳本輸出中帶有「請人工確認」的警告
+  （例如 Redis 寫入未見 TTL 但可能有其他清理機制），須針對該警告做出明確判定
+- 審查重心放在機器無法判定的問題：
+  - 欄位語義是否被多個功能共用（一欄位一語義）
+  - cache 失效策略是否完整（TTL 之外是否有主動失效，跨 instance 是否同步）
+  - fire-and-forget 是否有 fallback 補償
+  - async/await 邊界後的狀態假設是否仍然成立
+  - 跨 instance / 多租戶隔離（lv_0_id）下設計是否成立
+- 既有 checklist 中與上述規則性項目重疊者，視為已由腳本代管，其餘照舊執行
+
 ## 審查項目（依序執行）
 
 ### 1. 對照需求
@@ -35,7 +50,7 @@ tools:
 
 ### 2. 程式碼品質
 - 命名是否符合專案慣例（前端 camelCase / 後端 Go 慣例 / 常數 UPPER_SNAKE_CASE）
-- 是否有 ESLint / Prettier 錯誤（必要時跑 `npx eslint <file>` 或 `yarn build`）
+- 是否有 ESLint / Prettier 錯誤（必要時跑 `npx eslint <file>` 或 `yarn build`）（已由 pre-review 腳本代管，僅在腳本失效時人工備援）
 - 重複邏輯是否該抽共用函式 / 元件 / hook
 - 註解是否為繁體中文、是否說明 why 而非 what
 
@@ -58,7 +73,7 @@ tools:
 - **錯誤處理**：是否在系統邊界做驗證
 
 - **Redis 安全（殭屍 / 阻塞）**
-  - 任何 `SADD` / `HSET`：對應的主資料有 TTL 或 active cleanup 嗎？沒有就是殭屍計時炸彈
+  - 任何 `SADD` / `HSET`：對應的主資料有 TTL 或 active cleanup 嗎？沒有就是殭屍計時炸彈（pre-review 已掃描並標警告，你須對警告做明確判定）
   - 任何 `SMEMBERS` / `HGETALL` / `MGET`：在 100 / 1,000 / 10,000 量級各是什麼表現？會不會變成單 thread 阻塞點？
   - 出現 `KEYS *` 一律打回，改用 `SCAN`
   - `SMEMBERS` 撈出來之後有沒有對每個元素再 `GetByID` → N+1 問題

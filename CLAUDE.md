@@ -64,6 +64,16 @@
 
 ### 流程五步驟
 
+0. **驗收條件凍結（開發前）**
+   - 主 Claude 將使用者的【原始需求文字】（非轉譯、非摘要）交給 PM
+   - PM 產出驗收清單：可驗證的行為條列，每條須可由 QA/PM 客觀判定通過與否
+     - 例:「訪客斷線重連後，未讀訊息應在 3 秒內補推」
+   - PM 沒有寫檔工具，只在回報中【產出清單內容】；由**主 Claude 寫入** `~/.claude/acceptance/<YYYYMMDD>-<任務簡述>.md`
+   - **呈現給使用者確認**。使用者確認後凍結，開發期間任何 agent 不得修改
+   - 規模比例原則: 小改動允許 PM 產出 3 行以內的迷你清單，流程不因此變重
+   - 使用者若在對話中明示「跳過驗收清單」或屬於例外情形（純讀取、非 code 修改），可略過本步驟
+   - **自主完成模式相容**: 使用者已授權「不用問、做完再回報」時，PM 凍結清單後直接往下走、最後一次性回報，不因本步驟中斷（清單仍要寫檔留存）
+
 1. **architect 開發**
    - 主 Claude 用 `Agent tool subagent_type: "architect"`，把使用者原始需求 + 已蒐集的上下文（檔案路徑、約束、相關發現）傳給 architect
    - architect 自動判斷「直接實作模式」或「三方案分析模式」；三方案模式會停下來等使用者選方案
@@ -72,6 +82,10 @@
    - **重大技術決策立即記 ADR**：當這次工作包含值得記錄的決策（語言/框架/函式庫選型、重大架構模式、資料庫/儲存結構性決定、重大取捨、回滾成本高/不可逆、推翻先前決策）時，architect 在該 repo `docs/adr/` 寫一筆 ADR（範本與觸發門檻見 `~/.claude/DECISION_LOG.md`）並更新 `docs/adr/README.md`，與 code + 規格放**同一個 commit**。一般 bug 修復 / 小重構 / 照既有規格實作不需寫
    - **先查工程知識庫、撞到坑就立即補卡**：architect / reviewer / qa 接到工作先 Read `~/.claude/knowledge/INDEX.md`，依涉及技術與問題類別讀命中的知識卡，避免重踩前人踩過的坑；工作中撞到非顯而易見的技術坑或確立有效模式，architect 當下在 `~/.claude/knowledge/` 補一張卡 + 回 INDEX 補列，與 code 同 commit（制度見 `knowledge/INDEX.md` 開頭）
    - architect 完成後 commit（commit message 用繁體中文）
+   - **commit 後、reviewer 前先跑確定性預檢**：於目標產品 repo 根目錄執行 `bash ~/.claude/scripts/pre-review.sh`
+     - 未通過 → 將腳本輸出原樣附給 architect 修正後重跑，此往返【不計入】reviewer 3 回合上限
+     - 通過 → 進入 reviewer 審查
+   - reviewer 分工原則: 腳本已涵蓋的規則性問題（lint、go vet、Redis 寫入 TTL 配對等）reviewer 不需重複逐項檢查，應專注於機器無法判定的問題：欄位語義是否被多功能共用、跨 instance 行為是否成立、快取失效策略是否完整、async 邊界後的狀態假設是否仍有效等
    - **接著呼叫 `reviewer`**
    - reviewer 有意見 → 由主 Claude 把 reviewer 的問題清單回傳給 architect，兩者直到一致（最多回合 3 次，超過要回報使用者）
    - 主 Claude 不直接改 code
@@ -80,6 +94,7 @@
    - reviewer 通過後，先在本地驗證
    - QA agent：跑本地 API + Playwright MCP 模擬使用者操作（不只 API，必要時開瀏覽器走完整使用者流程）
    - PM agent：對照規格書驗收（從 `~/.claude/products/INDEX.md` 載入對應產品配置）
+     - PM 驗收一律以 `~/.claude/acceptance/` 中本任務的凍結清單為唯一依據；architect 更新的規格書僅供參考，不得作為驗收判定標準
    - 任一項有問題 → 回到第 1 步交給 architect 修
 
 3. **Push 到 remote main 觸發 dev 部署**
@@ -88,10 +103,13 @@
    - push 前要先確認帳號歸屬（若有多帳號設定）
    - 跨 repo 依賴（如 shared kit → app 的 go.mod 升版）也在此步驟完成
 
-4. **等部署完成後跑 dev 測試**
-   - dev 自動部署約需 5 分鐘
-   - 用 `ScheduleWakeup` 或 `Bash` 等待後，再呼叫 QA agent 對 dev 站台跑驗證
-   - 同樣要 API + Playwright MCP 雙軌
+4. **確認部署完成後，QA 對 dev 站台驗證**
+   - 讀取 `~/.claude/products/<product>.md` 的「部署驗證」章節：
+     - 若 `enabled: true` → 執行 `bash ~/.claude/scripts/verify-deploy.sh <version_url> $(git rev-parse HEAD) <timeout> <interval> <jq_path>`（多 repo 產品的 commit 取「擁有該 version endpoint 的 repo」的 HEAD）
+       - exit 0（新版本已上線）→ 放行 QA 測試
+       - exit 1（超時）→ 這是【部署問題】而非測試失敗：不退回 architect、不計入重試，直接回報使用者檢查部署狀態
+     - 若章節不存在或 `enabled: false` → 沿用原行為：用 `ScheduleWakeup` 或 `Bash` 等待約 5 分鐘後再呼叫 QA
+   - 放行後呼叫 QA agent 對 dev 站台跑驗證，同樣要 API + Playwright MCP 雙軌
 
 5. **回報或回頭**
    - dev 測試有問題 → 回到第 1 步

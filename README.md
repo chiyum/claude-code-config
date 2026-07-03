@@ -12,7 +12,7 @@
 
 ```
 claude-code-config/
-├── CLAUDE.md                  # 全域開發規範（主 Claude 指令集）：編排協定 + 五步驟開發流程
+├── CLAUDE.md                  # 全域開發規範（主 Claude 指令集）：編排協定 + 開發流程步驟 0~5
 ├── SETUP_GUIDE.md             # 一步步的安裝與設定指南
 ├── DECISION_LOG.md            # ADR 決策紀錄制度的單一真相來源
 ├── settings.json              # Claude Code 設定檔（權限 / Stop hook / plugin）
@@ -25,10 +25,15 @@ claude-code-config/
 │   └── reviewer.md            # 審查員：code review
 ├── hooks/
 │   └── slack-notify.sh        # Stop hook：完成回覆後推 Slack
+├── scripts/                   # 流程用確定性腳本
+│   ├── verify-deploy.sh       # 事件驅動部署驗證：輪詢 version endpoint 確認新版本上線
+│   └── pre-review.sh          # reviewer 前的確定性預檢（lint / go vet / Redis TTL 掃描）
+├── acceptance/                # 凍結驗收清單（步驟 0 產生，PM 驗收唯一依據）
+│   └── README.md              # 命名 / 凍結 / 寫檔分工規則
 ├── knowledge/                 # 工程知識庫（跨專案可複用的教訓 / 模式）
 │   ├── INDEX.md               # 知識卡索引（依技術 / 問題類別分類）
 │   └── example-card.md        # 範例知識卡
-├── products/                  # 產品配置（PM/QA 用）
+├── products/                  # 產品配置（PM/QA 用，含各產品「部署驗證」章節）
 │   ├── INDEX.md               # 產品索引
 │   └── example_product.md     # 範例產品配置
 └── skills/                    # 自訂 Skill
@@ -51,13 +56,16 @@ claude-code-config/
 
 ### 2. 標準開發流程（CLAUDE.md）
 
-所有「修改 code」的任務走固定五步驟，主 Claude 是 orchestrator：
+所有「修改 code」的任務走固定步驟（0~5），主 Claude 是 orchestrator：
 
 ```
-architect 開發 → reviewer 審查 → 本地 QA + PM 驗收 → push 觸發部署 → 線上 QA
+⓪ 驗收條件凍結 → ① architect 開發 → pre-review 預檢 → reviewer 審查
+→ ② 本地 QA + PM 驗收 → ③ push 觸發部署 → ④ 部署驗證 + 線上 QA → ⑤ 回報
 ```
 
 主 Claude 不直接改 code，而是把需求、上下文、約束打包交給對應 agent。architect 實作時，**code + 規格書更新 + （必要時）ADR / 知識卡放在同一個 commit**。
+
+三個確定性關卡讓流程更穩：**步驟 0 凍結驗收清單**（破除「architect 自己出題自己改考卷」的循環依賴，PM 驗收以凍結清單為唯一依據）、**pre-review 腳本**（lint / go vet / Redis TTL 等可規則化的錯誤在 reviewer 前攔截，不佔 reviewer 回合）、**事件驅動部署驗證**（`verify-deploy.sh` 輪詢 version endpoint 確認新版本上線才放行 QA，取代固定等 5 分鐘；未設定 version endpoint 的產品自動沿用舊行為）。
 
 ### 3. Agent 分工
 
