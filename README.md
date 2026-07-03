@@ -6,6 +6,8 @@
 
 **第一次使用？** 請先看 [安裝與設定指南（SETUP_GUIDE.md）](SETUP_GUIDE.md)，裡面有一步步的操作說明。
 
+**想先看全貌？** [工作流程圖（WORKFLOW.md）](WORKFLOW.md) 把「編排協定 + 五步驟開發流程」畫成一張 Mermaid 流程圖。
+
 ## 目錄結構
 
 ```
