@@ -47,7 +47,10 @@ cp agents/*.md ~/.claude/agents/
 mkdir -p ~/.claude/knowledge
 cp knowledge/*.md ~/.claude/knowledge/
 
-# Hook（選裝，需要 Slack 通知才裝）
+# Hook 腳本（建議跟著 settings.json 一起裝——settings.json 的 Stop hook 指向這支腳本，
+# 沒複製會每回合報「找不到腳本」。腳本本身是安全 no-op：沒設定 Slack webhook 就靜默跳過，
+# 裝了它「不等於」會發通知；真的要通知才做下面第 3 步的「選做：設定 Slack 通知」。
+# 完全不想要這個 hook：跳過這裡，並把 ~/.claude/settings.json 的 hooks.Stop 區塊整段刪掉）
 mkdir -p ~/.claude/hooks
 cp hooks/slack-notify.sh ~/.claude/hooks/
 chmod +x ~/.claude/hooks/slack-notify.sh
@@ -128,7 +131,7 @@ claude
 | `knowledge/` | 工程知識庫（成長系統）：跨專案教訓 / 踩坑卡，agent 接任務先查、撞坑即補 | ✅ 推薦 |
 | `products/INDEX.md` | 產品索引，PM 用來查對應的產品配置 | ✅ 推薦 |
 | `products/example_product.md` | 範例產品配置（複製來用） | 📋 參考 |
-| `hooks/slack-notify.sh` | 每次 Claude 回覆後推 Slack 通知 | 🔔 選裝 |
+| `hooks/slack-notify.sh` | 每次 Claude 回覆後推 Slack 通知（沒設 webhook 時自動 no-op；settings.json 的 Stop hook 指向它，故建議連同 settings.json 一起裝） | 🔔 通知選用、腳本建議裝 |
 | `skills/merge-prod/` | 自動化合併正式站部署分支 | 🔧 選裝 |
 | `skills/test-*-integrity/` | 訊息系統壓力測試腳本 | 🔧 選裝 |
 | `skills/verify-ocr-version/` | 驗證 sidecar 部署版本 | 🔧 選裝 |
