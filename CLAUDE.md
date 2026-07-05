@@ -62,32 +62,37 @@
 
 每一次「修改 code」的任務都必須走這個流程，主 Claude 是 orchestrator，依序交棒給對應 agent，不要自己動手寫 code。
 
+> **入口規則**：使用者輸入 `/dev` 當然觸發 dev skill；使用者用**自然語言授權自主開發**（「自主開發」「不用問做完再回報」「整個流程跑完」等語意）時，主 Claude 必須**主動 invoke dev skill（等同 /dev auto）**再開始，不得只憑記憶照本節執行——skill 內含檢查點、憲章、切批等本節未展開的細節。日常明確指示的單點修改（「幫我修這個 bug」無自主授權語意）照本節流程走即可，不強制過 skill。
+
 ### 流程五步驟
 
 0. **驗收條件凍結（開發前）**
    - 主 Claude 將使用者的【原始需求文字】（非轉譯、非摘要）交給 PM
    - PM 產出驗收清單：可驗證的行為條列，每條須可由 QA/PM 客觀判定通過與否
-     - 例:「訪客斷線重連後，未讀訊息應在 3 秒內補推」
+     - **每條三段式**（格式見 `~/.claude/acceptance/README.md`）：`### A<n> 行為` + `驗證步驟`（URL/帳號/操作，凍結時定案，驗收者不得即興換驗法）+ `預期結果`
+     - 例:「### A1 訪客斷線重連補推未讀」+ 驗證步驟 + 「預期: 3 秒內補推、順序正確、無重複」
    - PM 沒有寫檔工具，只在回報中【產出清單內容】；由**主 Claude 寫入** `~/.claude/acceptance/<YYYYMMDD>-<任務簡述>.md`
    - **呈現給使用者確認**。使用者確認後凍結，開發期間任何 agent 不得修改
    - 規模比例原則: 小改動允許 PM 產出 3 行以內的迷你清單，流程不因此變重
    - 使用者若在對話中明示「跳過驗收清單」或屬於例外情形（純讀取、非 code 修改），可略過本步驟
    - **自主完成模式相容**: 使用者已授權「不用問、做完再回報」時，PM 凍結清單後直接往下走、最後一次性回報，不因本步驟中斷（清單仍要寫檔留存）
+   - **大型 / 自主任務加凍結「任務憲章」**（與清單同檔，格式見 `acceptance/README.md`）: 範圍、非目標、預授權決策表（把可預期的問題先答掉，如「技術債一律移除，逐項不必確認」「命名/結構 architect 自行決定」「規格模糊照既有行為 1:1」）、必問白名單。憲章凍結後任何 agent 想提問先對照憲章：能自答就自答並記入決策紀錄；**只有命中白名單（不可逆刪資料/花錢/資安/碰 prod/需求自相矛盾）才准中斷**；其餘疑問寫 `~/.claude/state/<task>-questions.md` 批次結束一併呈報。日常小任務不強制憲章，各處「模糊先問」條款照舊
 
 1. **architect 開發**
    - 主 Claude 用 `Agent tool subagent_type: "architect"`，把使用者原始需求 + 已蒐集的上下文（檔案路徑、約束、相關發現）傳給 architect
    - architect 自動判斷「直接實作模式」或「三方案分析模式」；三方案模式會停下來等使用者選方案
+     - **自主模式例外**（/dev、使用者授權「不用問做完再回報」）: 主 Claude 直接採納 architect 的推薦方案，理由記入最終回報「我幫你做的決定」清單；屬 ADR 門檻照常寫 ADR，不停等使用者
    - **規格書必須同步更新**：architect 實作 code 變更時，必須同時更新該產品在 `~/.claude/products/<product>.md`「規格書與文件」區塊列出的相關規格檔（新需求 → 新增章節；行為變更 → 改該章節；廢棄功能 → 刪該章節）。code + 規格更新放在**同一個 commit**，避免下一個 session 的開發者（不論人或 Claude）看不到差異
    - 若需求屬於規格未涵蓋的新功能，或產品配置內未列任何規格檔 → architect 必須主動在回報時提出「缺規格書，請使用者決定要新增哪一份」，而不是默默跳過
    - **重大技術決策立即記 ADR**：當這次工作包含值得記錄的決策（語言/框架/函式庫選型、重大架構模式、資料庫/儲存結構性決定、重大取捨、回滾成本高/不可逆、推翻先前決策）時，architect 在該 repo `docs/adr/` 寫一筆 ADR（範本與觸發門檻見 `~/.claude/DECISION_LOG.md`）並更新 `docs/adr/README.md`，與 code + 規格放**同一個 commit**。一般 bug 修復 / 小重構 / 照既有規格實作不需寫
-   - **先查工程知識庫、撞到坑就立即補卡**：architect / reviewer / qa 接到工作先 Read `~/.claude/knowledge/INDEX.md`，依涉及技術與問題類別讀命中的知識卡，避免重踩前人踩過的坑；工作中撞到非顯而易見的技術坑或確立有效模式，architect 當下在 `~/.claude/knowledge/` 補一張卡 + 回 INDEX 補列，與 code 同 commit（制度見 `knowledge/INDEX.md` 開頭）
+   - **先查工程知識庫、撞到坑就立即補卡**：architect / reviewer / qa 接到工作先 Read `~/.claude/knowledge/INDEX.md`，**優先讀命中技術域的 playbook**（`knowledge/playbooks/`：把該技術域所有事故卡蒸餾成的設計框架與檢查清單，一次拿到整套），需要事故細節再深入個別知識卡，避免重踩前人踩過的坑；工作中撞到非顯而易見的技術坑或確立有效模式，architect 當下在 `~/.claude/knowledge/` 補一張卡 + 回 INDEX 補列，與 code 同 commit（制度見 `knowledge/INDEX.md` 開頭）
    - architect 完成後 commit（commit message 用繁體中文）
    - **commit 後、reviewer 前先跑確定性預檢**：於目標產品 repo 根目錄執行 `bash ~/.claude/scripts/pre-review.sh`
      - 未通過 → 將腳本輸出原樣附給 architect 修正後重跑，此往返【不計入】reviewer 3 回合上限
      - 通過 → 進入 reviewer 審查
    - reviewer 分工原則: 腳本已涵蓋的規則性問題（lint、go vet、Redis 寫入 TTL 配對等）reviewer 不需重複逐項檢查，應專注於機器無法判定的問題：欄位語義是否被多功能共用、跨 instance 行為是否成立、快取失效策略是否完整、async 邊界後的狀態假設是否仍有效等
    - **接著呼叫 `reviewer`**
-   - reviewer 有意見 → 由主 Claude 把 reviewer 的問題清單回傳給 architect，兩者直到一致（最多回合 3 次，超過要回報使用者）
+   - reviewer 有意見 → 由主 Claude 把 reviewer 的問題清單回傳給 architect，兩者直到一致（最多回合 3 次，超過要回報使用者；**自主模式**下超限改為該項凍結記入 blockers、繼續其餘工作、最終回報一併列出）
    - 主 Claude 不直接改 code
 
 2. **本地驗證：QA + PM**
@@ -95,12 +100,16 @@
    - QA agent：跑本地 API + Playwright MCP 模擬使用者操作（不只 API，必要時開瀏覽器走完整使用者流程）
    - PM agent：對照規格書驗收（從 `~/.claude/products/INDEX.md` 載入對應產品配置）
      - PM 驗收一律以 `~/.claude/acceptance/` 中本任務的凍結清單為唯一依據；architect 更新的規格書僅供參考，不得作為驗收判定標準
+   - **證據落地 gate（反假驗收三層，2026-07 起）**：
+     1. QA/PM 每驗一條 `A<n>` 必須落地證據檔到 `~/.claude/acceptance/<任務>/evidence/`（檔名含 `A<n>-`）。主 Claude 放行前執行 `bash ~/.claude/scripts/verify-evidence.sh <清單檔>`，任一條零證據 → 不放行，退回補驗
+     2. 腳本通過後，主 Claude **親自 Read 抽驗 1-2 張關鍵截圖**，核對畫面內容真的等於條目宣稱；抽驗不符 → 該 agent 的整份驗收報告降級為不可信，全部重驗
+     3. 大改動（architect triage 為「大」）加開**反方 PM**：一隻獨立 agent 以「證明功能沒完成」為目標，專挑清單條目的反例（換帳號、換租戶、重整頁面、斷線重連）；反方找不到反例才算真通過
    - 任一項有問題 → 回到第 1 步交給 architect 修
 
 3. **Push 到 remote main 觸發 dev 部署**
    - 本地 QA + PM 都通過後，才能 push
    - 受影響的所有 repo 都要 push 到各自 remote main
-   - push 前要先確認帳號歸屬（若有多帳號設定）
+   - push 前先讀 `~/.claude/products/<product>.md` 的「git 帳號歸屬」欄位照著做；**缺此欄才問使用者一次，問完立刻把答案寫回產品配置**，之後同產品不再問
    - 跨 repo 依賴（如 shared kit → app 的 go.mod 升版）也在此步驟完成
 
 4. **確認部署完成後，QA 對 dev 站台驗證**
@@ -110,10 +119,28 @@
        - exit 1（超時）→ 這是【部署問題】而非測試失敗：不退回 architect、不計入重試，直接回報使用者檢查部署狀態
      - 若章節不存在或 `enabled: false` → 沿用原行為：用 `ScheduleWakeup` 或 `Bash` 等待約 5 分鐘後再呼叫 QA
    - 放行後呼叫 QA agent 對 dev 站台跑驗證，同樣要 API + Playwright MCP 雙軌
+   - dev 驗證同樣適用步驟 2 的證據落地 gate（verify-evidence + 抽驗）
+   - **前後端部署面注意**：verify-deploy 只驗 version endpoint 所屬 repo（通常是 API）；前端靜態 bundle 可能較晚上線。有前端改動時，QA 須另確認前端版本字串（如 systemVersion）已更新，避免「API 新了但使用者看到舊 UI」被誤判為功能沒完成
 
 5. **回報或回頭**
    - dev 測試有問題 → 回到第 1 步
    - 全部通過 → 主 Claude 回報使用者「dev 驗收完成」，**停下來等指令**（是否合 prod、是否再加功能等，由使用者決定）
+   - **回報必附「1 分鐘複驗指引」**：確切 URL + 帳號 + 3 步以內操作 + 應看到什麼（直接從凍結清單的驗證步驟摘出最關鍵 1-2 條）。使用者照著走走不通 = 流程缺陷，立即回到第 1 步，不得歸因於使用者操作
+
+### 檢查點與看門狗（斷線自我恢復）
+
+任何走五步驟的任務，主 Claude 必須維護檢查點檔 `~/.claude/state/<任務slug>.json`（格式與 status 語義見 `~/.claude/state/README.md`）：
+
+- **建立**: 步驟 0 凍結清單後（session_id 取法見 state/README.md）
+- **更新**: 每個 gate 轉換（步驟切換、reviewer 回合結束、push、部署放行、批次結束）用一行 Bash 更新 `current_step` / `next_action` / `updated_at`；等使用者輸入時標 `awaiting_user`，完成標 `done`
+- **看門狗**: `scripts/watchdog.sh` 由排程器每 10 分鐘喚醒（Mac=launchd，Linux/WSL=cron，安裝器 `scripts/install-watchdog.sh` 依平台注入）。`running` 且心跳逾 20 分鐘且 transcript 沒在動 → `claude --resume` 復活（上限 3 次）；`awaiting_next_batch` → 開新 session 跑「/dev 繼續 <task>」。API/斷網期間復活會失敗，下一輪自動再試（輪詢直到成功）
+
+### 大型任務切批（批次 = Session，控制 context 膨脹）
+
+- **觸發**: architect triage 為大改且可分解為多批、或預估單一 session context 撐不完（如整專案重構）→ 步驟 0 就切批寫進驗收清單
+- **每批結束**: 寫交接檔 `~/.claude/state/<task>-handoff.md`（本批完成內容、commit hash、下一批輸入、地雷）→ state 標 `awaiting_next_batch` → 回報本批結果後結束本 session 工作
+- **接續**: 看門狗自動開新 session（或使用者手動「/dev 繼續 <task>」）——新 process = 乾淨 context，資訊靠交接檔 + 檢查點無損傳遞
+- **配套紀律**: 大型任務中主 Claude 只當 orchestrator，不親自 Read 大檔原始碼、重活一律委派 agent（subagent 的工具輸出不進主 context）
 
 ### 例外（主 Claude 可直接處理，不用走 architect）
 
@@ -223,8 +250,9 @@
 **操作規則：**
 
 - 使用者要求 push / clone / 設定 remote 到 GitHub 前，**必須先確認目標帳號**：
+  - 產品配置 `~/.claude/products/<product>.md` 已有「git 帳號歸屬」欄 → 直接照欄位做，不再問
   - URL 已明確指定哪個帳號 → 直接照 URL 對應到正確 host
-  - URL 模糊或只給 repo 名稱 → 主動詢問是哪個帳號
+  - URL 模糊或只給 repo 名稱 → 主動詢問是哪個帳號；屬某產品的 repo 則把答案寫回該產品配置的「git 帳號歸屬」欄，之後不再問
 - 次要帳號的 remote URL 必須使用自訂的 host alias，不能用 `github.com`
 - 驗證連線：`ssh -T git@github.com`（主帳號）或 `ssh -T git@github.com-secondary`（次要帳號）
 - 若 push 出現 `Repository not found`，先用 `ssh -T` 確認當前 host 認證的是哪個帳號，再判斷是否 URL 寫錯

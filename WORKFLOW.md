@@ -7,35 +7,48 @@ flowchart TD
     Start(["Session 啟動｜基準 effort = high（固定，不整段開 ultracode/xhigh）"]) --> Ctx["產品上下文偵測<br/>觸發訊號 → INDEX.md → &lt;product&gt;.md → MEMORY.md → 一行通知已對齊"]
     Ctx --> Type{"任務類型?"}
     Type -->|"純讀取 / 改非 code 檔 / 使用者說直接改"| Direct["主 Claude 直接處理，不走 architect"]
-    Type -->|"修改 code"| S0
+    Type -->|"/dev 或自然語言授權自主開發"| Dev["/dev skill 入口<br/>標準 / auto（零停頓）/ 繼續（接續中斷或下一批）<br/>建檢查點檔 state/&lt;slug&gt;.json"]
+    Type -->|"修改 code（單點指示）"| S0
+    Dev --> S0
 
-    subgraph Flow["標準開發流程（骨架確定性；gate 與 3 回合上限不交給模型）"]
+    subgraph Flow["標準開發流程（骨架確定性；gate 與 3 回合上限不交給模型；每個 gate 轉換更新檢查點）"]
       direction TB
-      S0["⓪ 驗收條件凍結（開發前）<br/>PM 依【原始需求】產出可客觀驗證清單 → 主 Claude 寫入 acceptance/ → 使用者確認後凍結（開發期間不得改）"]
-      S0 --> S1["① architect（重活階段★）<br/>查 knowledge/INDEX → 實作＋同步改規格 → 重大決策寫 ADR → 撞坑補知識卡 → commit 繁中"]
+      S0["⓪ 驗收條件凍結（開發前）<br/>PM 依【原始需求】產出三段式清單（A&lt;n&gt; 行為＋驗證步驟＋預期結果，驗法凍結定案）<br/>大型/自主任務加任務憲章（預授權決策＋必問白名單）→ 主 Claude 寫入 acceptance/ → 使用者確認後凍結"]
+      S0 --> S1["① architect（重活階段★）<br/>先讀 playbook 再深入知識卡 → 實作＋同步改規格 → 重大決策寫 ADR → 撞坑補卡＋連動 playbook → commit 繁中"]
       S1 --> PR["pre-review.sh 確定性預檢<br/>lint / go vet / Redis TTL 配對掃描（於產品 repo 根目錄）"]
       PR --> PROK{"通過?"}
       PROK -->|"否（附輸出給 architect 修，【不計入】reviewer 3 回合）"| S1
       PROK -->|是| Rev["reviewer 審查（重活階段★）<br/>專注機器判不了的：欄位語義共用 / cache 失效 / race / 跨 instance"]
       Rev --> RevOK{"通過?"}
       RevOK -->|"否（來回 ≤ 3 回合，護欄 A）"| S1
-      RevOK -->|"超過 3 回合"| Report["回報使用者裁決"]
-      RevOK -->|是| S2["② 本地驗證<br/>QA：API＋Playwright｜PM：對照 acceptance/ 凍結清單（規格書僅參考）"]
+      RevOK -->|"超過 3 回合（自主模式：凍結記 blockers 續跑）"| Report["回報使用者裁決"]
+      RevOK -->|是| S2["② 本地驗證＋反假驗收三層 gate<br/>QA/PM 逐條落地證據 evidence/ → verify-evidence.sh 確定性檢查<br/>→ 主 Claude 抽驗截圖 → 大改動加開反方 PM 找反例"]
       S2 --> L{"通過?"}
       L -->|"任一失敗"| S1
-      L -->|是| S3["③ push 各 repo remote main<br/>先確認帳號歸屬 ＋ 處理跨 repo 依賴（go.mod 升版）"]
+      L -->|是| S3["③ push 各 repo remote main<br/>讀產品配置「git 帳號歸屬」欄（缺欄問一次即回寫）＋ 處理跨 repo 依賴（go.mod 升版）"]
       S3 --> S4["④ 確認部署完成：讀產品「部署驗證」章節"]
       S4 --> Dep{"enabled?"}
       Dep -->|"true"| VD["verify-deploy.sh 輪詢 version endpoint<br/>比對 push 的 commit"]
       Dep -->|"false / 無章節"| WAIT["沿用固定等待 ~5min<br/>（ScheduleWakeup/Bash）"]
       VD --> VDR{"新版本上線?"}
       VDR -->|"exit 1 超時＝【部署問題】不退回 architect、不計入重試"| Report
-      VDR -->|"exit 0"| DevQA["dev QA：API＋Playwright 雙軌"]
+      VDR -->|"exit 0"| DevQA["dev QA：API＋Playwright 雙軌<br/>同樣適用證據落地 gate；前端改動另驗前端版本字串（bundle 可能較晚上線）"]
       WAIT --> DevQA
       DevQA --> Dg{"通過?"}
       Dg -->|否| S1
-      Dg -->|是| S5["⑤ 回報「dev 驗收完成」，停下等指令（合 prod / 加功能由使用者決定）"]
+      Dg -->|是| S5["⑤ 回報「dev 驗收完成」＋ 1 分鐘複驗指引（URL＋帳號＋≤3 步＋應看到什麼）<br/>停下等指令（合 prod / 加功能由使用者決定）"]
     end
+
+    subgraph Resilience["檢查點與看門狗（斷線自我恢復）＋ 批次=Session"]
+      direction TB
+      SC["state/&lt;slug&gt;.json 檢查點<br/>每個 gate 轉換更新 current_step / next_action / 心跳"]
+      WD["watchdog.sh（launchd / cron 每 10 分鐘）<br/>running 心跳逾期且 transcript 沒動 → claude --resume 復活（上限 3 次）<br/>awaiting_next_batch → 開新 session「/dev 繼續」｜awaiting_user 不動"]
+      BATCH["大型任務切批：每批結束寫 handoff.md → 標 awaiting_next_batch → 新 session 乾淨 context 接續"]
+      SC -.監控.-> WD
+      WD -.拉起.-> BATCH
+    end
+
+    Flow -.寫檢查點.-> SC
 
     subgraph Gov["★ 重活階段的火力配置 — 凌駕五步驟的核心原則，只有 orchestrator 能決定"]
       direction TB

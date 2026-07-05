@@ -57,8 +57,18 @@ mkdir -p ~/.claude/products
 cp products/INDEX.md ~/.claude/products/
 cp products/example_product.md ~/.claude/products/
 
-# Skill（選裝，按需要）
+# Skill（選裝，按需要；skills/dev 是五步驟一鍵入口，建議裝）
 cp -r skills/ ~/.claude/skills/
+
+# 流程腳本 + 看門狗（建議全裝：pre-review 預檢、verify-deploy 部署驗證、
+# verify-evidence 驗收證據檢查、watchdog 斷線自我恢復）
+mkdir -p ~/.claude/scripts ~/.claude/state
+cp scripts/*.sh ~/.claude/scripts/ && chmod +x ~/.claude/scripts/*.sh
+cp state/README.md state/watchdog.conf ~/.claude/state/
+
+# 驗收清單制度（規則檔）
+mkdir -p ~/.claude/acceptance
+cp acceptance/README.md ~/.claude/acceptance/
 ```
 
 ### 第 3 步：客製化
@@ -145,3 +155,18 @@ npx @anthropic-ai/mcp-playwright --help
 ### Q: settings.json 裡的 `skipDangerousModePermissionPrompt` 和 `skipAutoPermissionPrompt` 是什麼？
 
 這兩個設定讓 Claude 執行工具時不用每次都問你「可以嗎？」。適合信任 Claude 的進階使用者。如果你想保守一點，把它們改成 `false`。
+
+### Q: 看門狗（斷線自我恢復）怎麼啟用？
+
+看門狗讓「session 被強制中斷（斷網、當機、睡眠）的任務」能被自動復活，並支援大型任務「批次=Session」的自動接續。安裝：
+
+```bash
+# 前置：需要 jq（macOS: brew install jq / Linux: apt install jq）
+bash ~/.claude/scripts/install-watchdog.sh
+```
+
+安裝器會偵測平台：macOS 裝 launchd（每 600 秒喚醒）、Linux/WSL 裝 cron（每 10 分鐘）；WSL 環境另會印出 Windows 原生工作排程器的替代指令（WSL 沒開也拉得起來）。
+
+- 運作原理與 state 檔格式見 `state/README.md`；制度規約見 `CLAUDE.md`「檢查點與看門狗」章
+- **權限模式**：預設保守——復活的無頭 session 碰到未在 allowlist 的工具會停在權限提示。想全自動（絕不卡住）在 `state/watchdog.conf` 設 `PERMISSION_FLAGS="--dangerously-skip-permissions"`，代價是無人監督下擁有完整權限，風險自負
+- 驗證：手動跑一次 `bash ~/.claude/scripts/watchdog.sh`，看 `~/.claude/state/watchdog.log`

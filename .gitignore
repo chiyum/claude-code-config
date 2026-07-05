@@ -61,3 +61,13 @@ plugins/blocklist.json
 # 保險：避免巢狀 repo
 **/.git/
 !/.git/
+
+# ===== 驗收制度 =====
+# README 與清單 .md 上版控；各任務的證據目錄（截圖等大檔）不上
+acceptance/*/
+
+# ===== 看門狗與任務檢查點 =====
+# 制度檔上版控；執行期 state / log / 交接檔為本機工作產物不上
+state/*
+!state/README.md
+!state/watchdog.conf

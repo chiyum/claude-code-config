@@ -34,7 +34,7 @@ while IFS=: read -r FILE LINE _; do
     # 此項為警告，交由 reviewer 確認，不直接 FAIL；若要改為硬性失敗，取消下行註解
     # FAIL=1
   fi
-done < <(grep -rn "\.SAdd(\|\.Set(\|\.HSet(" --include="*.go" . 2>/dev/null)
+done < <(grep -rn "\.SAdd(\|\.Set(\|\.HSet(\|\.HSetNX(\|\.RPush(\|\.LPush(\|\.ZAdd(\|\.Incr(\|\.IncrBy(" --include="*.go" . 2>/dev/null)
 
 echo "=== [3/3] 產品自訂檢查 ==="
 # 若目標產品 repo 根目錄存在 .pre-review-extra.sh，一併執行（各產品可自行擴充規則）

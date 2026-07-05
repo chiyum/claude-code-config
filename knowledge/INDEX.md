@@ -7,11 +7,21 @@
 ## agent 怎麼用這份索引
 
 1. 接到任務時，先辨識涉及哪些**技術**（websocket / redis / go / 你的技術棧…）與**問題類別**（高併發 / 快取一致性 / race / 多實例…）。
-2. 在下方兩張索引比對命中標籤，**只讀命中的知識卡**（不必全讀）。
-3. 設計 / 審查 / 測試時把卡內「對策」與「適用 / 不適用」納入考量；卡內 `程式碼參考` 可直接翻到真實實作。
-4. 若這次又學到新教訓，照成長規則補一張卡並回此索引補一列。
+2. **先讀命中技術域的 Playbook**（下表）：playbook 是把該域所有事故卡蒸餾成的「設計決策流程 + 必過檢查清單」，一次 Read 就拿到整套框架。
+3. 需要事故細節（症狀重現、程式碼參考）時，才順著 playbook 的連結深入個別知識卡；playbook 未覆蓋的域再用下方兩張標籤索引比對命中卡。
+4. 設計 / 審查 / 測試時把「對策」與「適用 / 不適用」納入考量；卡內 `程式碼參考` 可直接翻到真實實作。
+5. 若這次又學到新教訓，照成長規則補一張卡並回此索引補一列；**新卡屬於既有 playbook 的域時，同一 commit 在該 playbook 補一列檢查項**（保持 playbook 是活的蒸餾層，不會過時）。
 
 每張卡的 frontmatter 都有 `tech` 與 `problem-class` 標籤；新增卡請沿用既有標籤命名（小寫、kebab-case），需要新標籤時直接加。
+
+## Playbook 層（設計框架，先讀這裡）
+
+同一技術域累積 3~5 張卡之後，值得把它們蒸餾成一份 playbook（結構範本見 `playbooks/PLAYBOOK_TEMPLATE.md`：frontmatter `type: playbook` + 何時讀 / 設計決策流程 / 必過檢查清單 / 已知坑速查 / 深入閱讀 五段）。
+
+| Playbook | 何時讀 | 蒸餾自 |
+|---|---|---|
+| [playbooks/PLAYBOOK_TEMPLATE.md](playbooks/PLAYBOOK_TEMPLATE.md) | （範本，展示結構用） | [example-card] |
+| _(隨技術域累積補上，例如 redis / websocket / go-backend / 前端表單 / 時區)_ | … | … |
 
 ## 知識卡格式
 

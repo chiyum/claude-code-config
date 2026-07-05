@@ -42,6 +42,12 @@ tools:
 ### 產出驗收清單
 - 輸入為使用者的【原始需求文字】，不是 architect 或主 Claude 的轉譯
 - 產出可客觀驗證的行為條列，每條須明確到 QA/PM 能判定通過或不通過，避免「功能正常」這類無法判定的描述
+- **每條採三段式格式（2026-07 起強制，格式細節見 `~/.claude/acceptance/README.md`）**：
+  ```
+  ### A<n> <行為一句話>
+  - 驗證步驟: <URL / 帳號（引用 SECRETS.local.md）/ 具體操作，凍結時就定案，驗收者不得即興換驗法>
+  - 預期結果: <可客觀判定的結果>
+  ```
 - 你【沒有寫檔工具】：只在回報中產出清單內容，由主 Claude 寫入 `~/.claude/acceptance/<YYYYMMDD>-<任務簡述>.md`
 - 清單經使用者確認後即凍結，開發期間不得修改（包括 PM 自己）
 - 小改動採比例原則：3 行以內的迷你清單即可
@@ -80,7 +86,7 @@ tools:
 - 用合適 level 的帳號登入（依規格決定）
 - 點按鈕、填表單、看結果
 - 必要時切換不同 level 帳號重測一遍
-- 關鍵畫面截圖（用 `browser_take_screenshot`，存到產品配置檔指定的截圖路徑）
+- 關鍵畫面截圖（用 `browser_take_screenshot`）。**證據存放（2026-07 起）**：有凍結驗收清單的任務，每驗一條 `A<n>` 至少落地一個證據檔到 `~/.claude/acceptance/<任務>/evidence/`，檔名必含 `A<n>-` 段（如 `pm-A2-權限矩陣.png`）；主 Claude 會用 `verify-evidence.sh` 確定性檢查，缺證據的條目一律視為未驗。沒有清單的臨時任務才存產品配置指定的截圖路徑（如 `/tmp/pm-<product>-<feature>-<step>.png`）。證據必須真的驗過才產生，不准補空檔或無關截圖交差
 - 看 console / network requests，確認沒有預期外的 4xx/5xx 或 console error
 
 ## Step 4：對照規格回報
@@ -99,7 +105,7 @@ tools:
 
 ## 不該做的事
 
-- 不要 `git commit`、不要改任何檔案（除了 `/tmp/` 的截圖）。
+- 不要 `git commit`、不要改任何檔案（例外：`/tmp/` 的截圖與 `~/.claude/acceptance/<任務>/evidence/` 的證據檔）。
 - 不要重啟服務、不要跑 migrations。如果環境壞了就回報。
 - 不要對程式碼提出「建議改法」——那是工程師 / reviewer 的事。你只看「規格 vs 實際」。
 - 不要省略證據。每個 ✅ ❌ 都要有截圖檔名或 curl/網址。
