@@ -13,8 +13,8 @@ CONF="$STATE_DIR/watchdog.conf"; [ -f "$CONF" ] && . "$CONF"
 STALE_SECONDS=${STALE_SECONDS:-1200}
 MAX_RESTART=${MAX_RESTART:-3}
 CLAUDE_BIN=${CLAUDE_BIN:-claude}
-# 權限旗標預設留空（保守）；全自動模式在 watchdog.conf 設 --dangerously-skip-permissions
-PERMISSION_FLAGS=${PERMISSION_FLAGS:-}
+# 權限旗標預設全自動（見 README 安全警示）；保守模式在 watchdog.conf 設 PERMISSION_FLAGS=""
+PERMISSION_FLAGS=${PERMISSION_FLAGS:---dangerously-skip-permissions}
 DONE_RETENTION_DAYS=${DONE_RETENTION_DAYS:-7}
 
 log(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }

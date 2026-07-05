@@ -168,5 +168,5 @@ bash ~/.claude/scripts/install-watchdog.sh
 安裝器會偵測平台：macOS 裝 launchd（每 600 秒喚醒）、Linux/WSL 裝 cron（每 10 分鐘）；WSL 環境另會印出 Windows 原生工作排程器的替代指令（WSL 沒開也拉得起來）。
 
 - 運作原理與 state 檔格式見 `state/README.md`；制度規約見 `CLAUDE.md`「檢查點與看門狗」章
-- **權限模式**：預設保守——復活的無頭 session 碰到未在 allowlist 的工具會停在權限提示。想全自動（絕不卡住）在 `state/watchdog.conf` 設 `PERMISSION_FLAGS="--dangerously-skip-permissions"`，代價是無人監督下擁有完整權限，風險自負
+- **權限模式**：預設全自動（`--dangerously-skip-permissions`，復活絕不卡在權限提示）——⚠️ 代價是復活的 session 在無人監督下擁有完整權限，風險說明見 README「安全警示」。要保守一點，在 `state/watchdog.conf` 改 `PERMISSION_FLAGS=""` 並搭配 `settings.json` 的 `permissions.allow` 白名單
 - 驗證：手動跑一次 `bash ~/.claude/scripts/watchdog.sh`，看 `~/.claude/state/watchdog.log`

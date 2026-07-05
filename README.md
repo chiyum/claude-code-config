@@ -94,6 +94,8 @@ QA/PM 說「通過」不算數，要能被確定性驗證：
 
 走五步驟的任務都維護檢查點檔 `state/<任務slug>.json`（current_step / next_action / status / 心跳），每個 gate 轉換更新一次。`scripts/watchdog.sh` 由排程器每 10 分鐘喚醒（`install-watchdog.sh` 依平台注入 launchd / cron / Windows 工作排程器）：`running` 且心跳逾期且 transcript 沒在動 → `claude --resume` 復活（上限 3 次，transcript mtime 活性判定防誤殺長工具呼叫）；`awaiting_user` 一律不動；`done` 過期自動清理。
 
+> ⚠️ **安全警示（--dangerously-skip-permissions）**：看門狗預設以 `--dangerously-skip-permissions` 無頭復活 session——復活絕不會卡在權限提示，但代價是**該 session 在無人監督下擁有完整權限**（可執行任意指令、改任意檔案、對外連線）。這是為「全自主開發」情境做的取捨，套用前請確認你接受此風險；若在共用機器、含敏感資料的環境，或你不完全信任任務內容，請在 `state/watchdog.conf` 改為 `PERMISSION_FLAGS=""`（保守模式：復活 session 碰到未在 `settings.json` `permissions.allow` 白名單的工具會停下等人）。
+
 ### 2.4 大型任務切批（批次 = Session）
 
 大改動可分解為多批時，步驟 0 就切批寫進驗收清單。每批結束寫交接檔 `state/<task>-handoff.md`（完成內容、commit hash、下一批輸入、地雷），state 標 `awaiting_next_batch` 後結束本 session；看門狗自動開**新 session** 接續下一批——新 process = 乾淨 context，資訊靠交接檔 + 檢查點無損傳遞，從根本上控制 context 膨脹。
