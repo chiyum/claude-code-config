@@ -173,3 +173,22 @@ bash ~/.claude/scripts/install-watchdog.sh
 - 運作原理與 state 檔格式見 `state/README.md`；制度規約見 `CLAUDE.md`「檢查點與看門狗」章
 - **權限模式**：預設全自動（`--dangerously-skip-permissions`，復活絕不卡在權限提示）——⚠️ 代價是復活的 session 在無人監督下擁有完整權限，風險說明見 README「安全警示」。要保守一點，在 `state/watchdog.conf` 改 `PERMISSION_FLAGS=""` 並搭配 `settings.json` 的 `permissions.allow` 白名單
 - 驗證：手動跑一次 `bash ~/.claude/scripts/watchdog.sh`，看 `~/.claude/state/watchdog.log`
+
+### Q: Codex 整合是什麼？我需要裝嗎？
+
+**不需要，預設停用。** 這是選用整合：把 OpenAI 的 Codex CLI 當作「異模型第二意見」，只在重大 review、卡關 3 次、極難推理交叉比對等關鍵場景由主 Claude 呼喚一次。沒裝 Codex 的環境完全不受影響——探測腳本 `scripts/codex-probe.sh` 偵測到未安裝會直接跳過。
+
+要啟用：
+
+```bash
+# 1. 安裝並登入 Codex CLI
+brew install codex        # 或參考 OpenAI 官方安裝方式
+codex login               # ChatGPT 帳號或 API key
+
+# 2. 驗證探測腳本（exit 0 = 可用）
+bash ~/.claude/scripts/codex-probe.sh
+
+# 3. 把 CLAUDE.md「選用模組：Codex CLI」節的啟用狀態改為 enabled
+```
+
+設計上 Codex 永遠是 non-blocking：呼喚前先探測額度（額度不足直接跳過，避免跑到一半卡住）、產出只作參考不作 gate 依據、中途失敗即棄由原流程接續。完整規約見 `CLAUDE.md` 該節。

@@ -2,6 +2,8 @@
 
 這張圖是 [`CLAUDE.md`](CLAUDE.md) 裡「編排協定 + 標準開發流程（步驟 0~5）」的視覺化版本，方便一眼看懂主 Claude（orchestrator）如何從 session 啟動、任務分流、驗收凍結、pre-review 預檢、五步驟開發、事件驅動部署驗證到火力配置與收尾。內容以 `CLAUDE.md` 為準；兩者若有出入，一律以 `CLAUDE.md` 文字規範為單一真相。
 
+> 選用模組不入圖：**Codex 異模型第二意見**（預設停用）屬骨架外的參考意見來源，呼喚前跑 `codex-probe.sh` 探測、失敗即棄不影響任何 gate，見 `CLAUDE.md`「選用模組：Codex CLI」節。
+
 ```mermaid
 flowchart TD
     Start(["Session 啟動｜基準 effort = high（固定，不整段開 ultracode/xhigh）"]) --> Ctx["產品上下文偵測<br/>觸發訊號 → INDEX.md → &lt;product&gt;.md → MEMORY.md → 一行通知已對齊"]

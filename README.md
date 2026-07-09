@@ -30,7 +30,8 @@ claude-code-config/
 │   ├── pre-review.sh          # reviewer 前的確定性預檢（lint / go vet / Redis TTL 掃描）
 │   ├── verify-evidence.sh     # 驗收放行前的證據完整性檢查（每條 A<n> 至少一個證據檔）
 │   ├── watchdog.sh            # 斷線看門狗核心（平台無關）：復活中斷任務、接續下一批
-│   └── install-watchdog.sh    # 看門狗排程安裝器（launchd / cron / Windows 排程器）
+│   ├── install-watchdog.sh    # 看門狗排程安裝器（launchd / cron / Windows 排程器）
+│   └── codex-probe.sh         # （選用）Codex 呼喚前的可用性/額度探測（未裝 Codex 則永遠 exit 2 安全跳過）
 ├── acceptance/                # 凍結驗收清單 + 驗收證據（步驟 0 產生，PM 驗收唯一依據）
 │   └── README.md              # 三段式清單格式 / 證據規約 / 任務憲章格式 / 凍結規則
 ├── state/                     # 任務檢查點與看門狗（斷線自我恢復 + 跨 session 接續）
@@ -153,6 +154,14 @@ Skill 是可重複使用的自動化腳本，用自然語言觸發：
 ### 8. Hook 整合
 
 `hooks/slack-notify.sh` 在每次 Claude 回覆後，自動把回覆內容推到 Slack channel，方便不在電腦前時追蹤進度。
+
+### 9. 選用整合：Codex 異模型第二意見（預設停用）
+
+同模型的 reviewer 有系統性盲點，異模型（OpenAI Codex CLI）在四種關鍵場景提供第二視角：重大改動的異模型加掃、卡關 3 次後的破局第二腦、極難推理的獨立解交叉比對、OpenAI 生態系問題。設計重點是**選用且 non-blocking**：
+
+- 呼喚前必跑 `scripts/codex-probe.sh` 做可用性/額度探測——未安裝、未登入、額度不足、逾時任一情況都直接跳過 Codex 走原流程，避免正式任務跑到一半沒額度卡住
+- Codex 產出只是參考意見，不作任何 gate 的放行依據；中途失敗即棄，自家 agent 無縫接續
+- **預設停用**——沒裝 Codex 的環境完全不受影響；啟用方式與完整規約見 `CLAUDE.md`「選用模組：Codex CLI 異模型第二意見」
 
 ## 如何使用
 
