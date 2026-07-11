@@ -22,7 +22,9 @@ claude-code-config/
 │   ├── architect.md           # 架構師：三方案分析 + 實作
 │   ├── pm.md                  # 產品經理：規格驗收
 │   ├── qa.md                  # QA：本地 + 線上測試
-│   └── reviewer.md            # 審查員：code review
+│   ├── reviewer.md            # 審查員：code review
+│   ├── ui-designer.md         # 視覺設計師（正方）：動 code 前產設計規格 / 三 direction 預覽
+│   └── design-reviewer.md     # 視覺審查員（反方）：三視口截圖六維度視覺驗收
 ├── hooks/
 │   └── slack-notify.sh        # Stop hook：完成回覆後推 Slack
 ├── scripts/                   # 流程用確定性腳本
@@ -109,6 +111,8 @@ QA/PM 說「通過」不算數，要能被確定性驗證：
 | **reviewer** | Code review | 涵蓋安全、效能、Redis 殭屍、Cache invalidation、Race condition 等 10+ 維度 |
 | **qa** | 測試 | API curl + Playwright MCP 雙軌，本地→線上分階段 |
 | **pm** | 驗收 | 產品無關設計，每次從 INDEX.md 載入對應產品配置 |
+| **ui-designer** | 視覺設計（正方） | 設計/切版任務與全新頁面在動 code 前產出設計規格（token 對映、版面構圖、數值級動效 spec）；大型視覺先出三 direction 預覽供挑選 |
+| **design-reviewer** | 視覺驗收（反方） | 三視口截圖 + 六維度審查（構圖/間距/字體/色彩/動效/三態），以正方規格為基準退修；成對觸發，沒開正方不開反方 |
 
 ### 4. 產品配置體系
 
@@ -162,6 +166,14 @@ Skill 是可重複使用的自動化腳本，用自然語言觸發：
 - 呼喚前必跑 `scripts/codex-probe.sh` 做可用性/額度探測——未安裝、未登入、額度不足、逾時任一情況都直接跳過 Codex 走原流程，避免正式任務跑到一半沒額度卡住
 - Codex 產出只是參考意見，不作任何 gate 的放行依據；中途失敗即棄，自家 agent 無縫接續
 - **預設停用**——沒裝 Codex 的環境完全不受影響；啟用方式與完整規約見 `CLAUDE.md`「選用模組：Codex CLI 異模型第二意見」
+
+### 10. 設計雙 agent（正方 × 反方）
+
+設計 / 切版任務與全新頁面採「正方先設計、反方後驗收」：`ui-designer` 在動 code 前產出可直接實作的設計規格（禁形容詞、全數值），architect 照規格實作，`design-reviewer` 用 Playwright 三視口截圖對照**同一份規格**裁決退修（≤3 回合）。兩者成對觸發、日常小修不開，流程不變重。動畫實作建議搭配官方 gsap-skills plugin（`claude plugin install gsap-skills@gsap-skills`）。
+
+### 11. Context 預算
+
+CLAUDE.md 每個 session 全額載入。收納鐵則：「路由/護欄」才常駐、「程序細節」放外掛檔留指標；設大小保險絲、禁縮寫黑話、新增前先與使用者討論；memory 索引只留活躍項、收尾歸檔。詳見 CLAUDE.md「本檔 context 預算」節。
 
 ## 如何使用
 

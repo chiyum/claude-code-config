@@ -113,7 +113,7 @@ echo "https://hooks.slack.com/services/YOUR/WEBHOOK/URL" > ~/.claude/hooks/slack
 claude
 ```
 
-然後跟它說：「請幫我看一下 agents 目錄有什麼」，它應該會列出 architect、pm、qa、reviewer 四個 agent。
+然後跟它說：「請幫我看一下 agents 目錄有什麼」，它應該會列出 architect、pm、qa、reviewer、ui-designer、design-reviewer 六個 agent。
 
 ## 各檔案用途說明
 
@@ -127,6 +127,8 @@ claude
 | `agents/reviewer.md` | 審查員 agent：code review，抓安全、效能、邊界問題 | ✅ 推薦 |
 | `agents/qa.md` | QA agent：用 API + 瀏覽器自動化跑測試 | ✅ 推薦 |
 | `agents/pm.md` | PM agent：對照規格書做驗收，截圖回報 | ✅ 推薦 |
+| `agents/ui-designer.md` | 視覺設計師（正方）：設計任務動 code 前產設計規格 / 三 direction 預覽 | ✅ 推薦 |
+| `agents/design-reviewer.md` | 視覺審查員（反方）：三視口截圖六維度驗收，與正方成對觸發 | ✅ 推薦 |
 | `DECISION_LOG.md` | ADR 決策紀錄制度：重大技術決策當下立即記，供日後查證 | ✅ 推薦 |
 | `knowledge/` | 工程知識庫（成長系統）：跨專案教訓 / 踩坑卡，agent 接任務先查、撞坑即補 | ✅ 推薦 |
 | `products/INDEX.md` | 產品索引，PM 用來查對應的產品配置 | ✅ 推薦 |

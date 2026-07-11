@@ -16,7 +16,10 @@ flowchart TD
     subgraph Flow["標準開發流程（骨架確定性；gate 與 3 回合上限不交給模型；每個 gate 轉換更新檢查點）"]
       direction TB
       S0["⓪ 驗收條件凍結（開發前）<br/>PM 依【原始需求】產出三段式清單（A&lt;n&gt; 行為＋驗證步驟＋預期結果，驗法凍結定案）<br/>大型/自主任務加任務憲章（預授權決策＋必問白名單）→ 主 Claude 寫入 acceptance/ → 使用者確認後凍結"]
-      S0 --> S1["① architect（重活階段★）<br/>先讀 playbook 再深入知識卡 → 實作＋同步改規格 → 重大決策寫 ADR → 撞坑補卡＋連動 playbook → commit 繁中"]
+      S0 --> UDQ{"設計意圖 / 全新頁面?"}
+      UDQ -->|"是"| UD["ui-designer（正方）產設計規格<br/>新視覺先出三 direction 預覽供挑選"]
+      UDQ -->|"否"| S1
+      UD --> S1["① architect（重活階段★）<br/>先讀 playbook 再深入知識卡 → 實作＋同步改規格 → 重大決策寫 ADR → 撞坑補卡＋連動 playbook → commit 繁中"]
       S1 --> PR["pre-review.sh 確定性預檢<br/>lint / go vet / Redis TTL 配對掃描（於產品 repo 根目錄）"]
       PR --> PROK{"通過?"}
       PROK -->|"否（附輸出給 architect 修，【不計入】reviewer 3 回合）"| S1
@@ -24,7 +27,11 @@ flowchart TD
       Rev --> RevOK{"通過?"}
       RevOK -->|"否（來回 ≤ 3 回合，護欄 A）"| S1
       RevOK -->|"超過 3 回合（自主模式：凍結記 blockers 續跑）"| Report["回報使用者裁決"]
-      RevOK -->|是| S2["② 本地驗證＋反假驗收三層 gate<br/>QA/PM 逐條落地證據 evidence/ → verify-evidence.sh 確定性檢查<br/>→ 主 Claude 抽驗截圖 → 大改動加開反方 PM 找反例"]
+      RevOK -->|是| DG{"開過 ui-designer?"}
+      DG -->|"是"| DR["design-reviewer 視覺 gate（反方）<br/>三視口截圖 × 六維度，以設計規格為基準（≤3 回合）"]
+      DR -->|"退修"| S1
+      DG -->|"否（沒開正方不開反方）"| S2
+      DR -->|"PASS"| S2["② 本地驗證＋反假驗收三層 gate<br/>QA/PM 逐條落地證據 evidence/ → verify-evidence.sh 確定性檢查<br/>→ 主 Claude 抽驗截圖 → 大改動加開反方 PM 找反例"]
       S2 --> L{"通過?"}
       L -->|"任一失敗"| S1
       L -->|是| S3["③ push 各 repo remote main<br/>讀產品配置「git 帳號歸屬」欄（缺欄問一次即回寫）＋ 處理跨 repo 依賴（go.mod 升版）"]
