@@ -33,7 +33,10 @@ claude-code-config/
 │   ├── verify-evidence.sh     # 驗收放行前的證據完整性檢查（每條 A<n> 至少一個證據檔）
 │   ├── watchdog.sh            # 斷線看門狗核心（平台無關）：復活中斷任務、接續下一批
 │   ├── install-watchdog.sh    # 看門狗排程安裝器（launchd / cron / Windows 排程器）
-│   └── codex-probe.sh         # （選用）Codex 呼喚前的可用性/額度探測（未裝 Codex 則永遠 exit 2 安全跳過）
+│   ├── codex-probe.sh         # （選用）Codex 呼喚前的可用性/額度探測（未裝 Codex 則永遠 exit 2 安全跳過）
+│   ├── collect-run-metrics.py # 任務級 run 遙測收集器（transcript 解析，零 token 開銷）
+│   ├── report-runs.py         # run 對照報表（按 config 版本分組看制度改動趨勢）
+│   └── rate-run.py            # 使用者一行驗收評分寫回 run 記錄
 ├── acceptance/                # 凍結驗收清單 + 驗收證據（步驟 0 產生，PM 驗收唯一依據）
 │   └── README.md              # 三段式清單格式 / 證據規約 / 任務憲章格式 / 凍結規則
 ├── state/                     # 任務檢查點與看門狗（斷線自我恢復 + 跨 session 接續）
@@ -171,7 +174,11 @@ Skill 是可重複使用的自動化腳本，用自然語言觸發：
 
 設計 / 切版任務與全新頁面採「正方先設計、反方後驗收」：`ui-designer` 在動 code 前產出可直接實作的設計規格（禁形容詞、全數值），architect 照規格實作，`design-reviewer` 用 Playwright 三視口截圖對照**同一份規格**裁決退修（≤3 回合）。兩者成對觸發、日常小修不開，流程不變重。動畫實作建議搭配官方 gsap-skills plugin（`claude plugin install gsap-skills@gsap-skills`）。
 
-### 11. Context 預算
+### 11. Run 遙測（制度改動的量化基準）
+
+每筆五步驟任務結束時，主 Claude 跑 `collect-run-metrics.py` 落一筆 run 記錄到 `run-metrics/runs/`（token 分帳到 agent 類型、派遣次數、config commit 指紋、使用者 verdict 欄）。累積後用 `report-runs.py` 按 config 版本分組看趨勢——用數據回答「這次制度改動有讓 agent 更省、更順嗎？」。純本地 transcript 解析、零 token 開銷；注意 transcript 有清理週期，收集必須在任務結束當下。
+
+### 12. Context 預算
 
 CLAUDE.md 每個 session 全額載入。收納鐵則：「路由/護欄」才常駐、「程序細節」放外掛檔留指標；設大小保險絲、禁縮寫黑話、新增前先與使用者討論；memory 索引只留活躍項、收尾歸檔。詳見 CLAUDE.md「本檔 context 預算」節。
 

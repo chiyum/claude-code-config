@@ -129,6 +129,7 @@
    - dev 測試有問題 → 回到第 1 步
    - 全部通過 → 主 Claude 回報使用者「dev 驗收完成」，**停下來等指令**（是否合 prod、是否再加功能等，由使用者決定）
    - **回報必附「1 分鐘複驗指引」**：確切 URL + 帳號 + 3 步以內操作 + 應看到什麼（直接從凍結清單的驗證步驟摘出最關鍵 1-2 條）。使用者照著走走不通 = 流程缺陷，立即回到第 1 步，不得歸因於使用者操作
+   - **回報前收 run 遙測**：跑 `python3 ~/.claude/scripts/collect-run-metrics.py --slug <任務slug> --sessions <session id>`，把 token 分帳與 agent 派遣摘要附進回報；使用者驗收後以 `rate-run.py` 寫回一行 verdict（制度見 `~/.claude/run-metrics/README.md`）
 
 ### 檢查點與切批（斷線自我恢復；細節見 `~/.claude/state/README.md` 與 dev skill）
 
