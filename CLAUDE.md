@@ -76,16 +76,9 @@
 ### 流程五步驟
 
 0. **驗收條件凍結（開發前）**
-   - 主 Claude 將使用者的【原始需求文字】（非轉譯、非摘要）交給 PM
-   - PM 產出驗收清單：可驗證的行為條列，每條須可由 QA/PM 客觀判定通過與否
-     - **每條三段式**（格式見 `~/.claude/acceptance/README.md`）：`### A<n> 行為` + `驗證步驟`（URL/帳號/操作，凍結時定案，驗收者不得即興換驗法）+ `預期結果`
-     - 例:「### A1 訪客斷線重連補推未讀」+ 驗證步驟 + 「預期: 3 秒內補推、順序正確、無重複」
-   - PM 沒有寫檔工具，只在回報中【產出清單內容】；由**主 Claude 寫入** `~/.claude/acceptance/<YYYYMMDD>-<任務簡述>.md`
-   - **呈現給使用者確認**。使用者確認後凍結，開發期間任何 agent 不得修改
-   - 規模比例原則: 小改動允許 PM 產出 3 行以內的迷你清單，流程不因此變重
-   - 使用者若在對話中明示「跳過驗收清單」或屬於例外情形（純讀取、非 code 修改），可略過本步驟
-   - **自主完成模式相容**: 使用者已授權「不用問、做完再回報」時，PM 凍結清單後直接往下走、最後一次性回報，不因本步驟中斷（清單仍要寫檔留存）
-   - **大型 / 自主任務加凍結「任務憲章」**（與清單同檔，格式見 `acceptance/README.md`）: 範圍、非目標、預授權決策表（把可預期的問題先答掉，如「技術債一律移除，逐項不必確認」「命名/結構 architect 自行決定」「規格模糊照既有行為 1:1」）、必問白名單。憲章凍結後任何 agent 想提問先對照憲章：能自答就自答並記入決策紀錄；**只有命中白名單（不可逆刪資料/花錢/資安/碰 prod/需求自相矛盾）才准中斷**；其餘疑問寫 `~/.claude/state/<task>-questions.md` 批次結束一併呈報。日常小任務不強制憲章，各處「模糊先問」條款照舊
+   - 主 Claude 把使用者的【原始需求文字】（非轉譯、非摘要）交給 PM，產出三段式驗收清單（`### A<n> 行為`＋`驗證步驟`＋`預期結果`；格式、例句與規模比例原則見 `~/.claude/acceptance/README.md`）；PM 沒有寫檔工具，由主 Claude 寫入 `~/.claude/acceptance/<YYYYMMDD>-<任務簡述>.md`
+   - 呈現給使用者確認後凍結，開發期間任何 agent 不得修改。使用者明示跳過、或屬例外情形（純讀取、非 code 修改）可略過；自主完成模式下凍結後直接往下走、最後一次性回報（清單仍要寫檔留存）
+   - **大型 / 自主任務加凍結「任務憲章」**（與清單同檔，格式見 `acceptance/README.md`）：範圍、非目標、預授權決策表、必問白名單。憲章凍結後 agent 想提問先對照憲章：能自答就自答並記入決策紀錄；**只有命中白名單（不可逆刪資料 / 花錢 / 資安 / 碰 prod / 需求自相矛盾）才准中斷**；其餘疑問寫 `~/.claude/state/<task>-questions.md` 批次結束一併呈報。日常小任務不強制憲章，各處「模糊先問」條款照舊
 
 1. **architect 開發**
    - 主 Claude 用 `Agent tool subagent_type: "architect"`，把使用者原始需求 + 已蒐集的上下文（檔案路徑、約束、相關發現）傳給 architect
@@ -137,20 +130,11 @@
    - 全部通過 → 主 Claude 回報使用者「dev 驗收完成」，**停下來等指令**（是否合 prod、是否再加功能等，由使用者決定）
    - **回報必附「1 分鐘複驗指引」**：確切 URL + 帳號 + 3 步以內操作 + 應看到什麼（直接從凍結清單的驗證步驟摘出最關鍵 1-2 條）。使用者照著走走不通 = 流程缺陷，立即回到第 1 步，不得歸因於使用者操作
 
-### 檢查點與看門狗（斷線自我恢復）
+### 檢查點與切批（斷線自我恢復；細節見 `~/.claude/state/README.md` 與 dev skill）
 
-任何走五步驟的任務，主 Claude 必須維護檢查點檔 `~/.claude/state/<任務slug>.json`（格式與 status 語義見 `~/.claude/state/README.md`）：
-
-- **建立**: 步驟 0 凍結清單後（session_id 取法見 state/README.md）
-- **更新**: 每個 gate 轉換（步驟切換、reviewer 回合結束、push、部署放行、批次結束）用一行 Bash 更新 `current_step` / `next_action` / `updated_at`；等使用者輸入時標 `awaiting_user`，完成標 `done`
-- **看門狗**: `scripts/watchdog.sh` 由排程器每 10 分鐘喚醒（Mac=launchd，Linux/WSL=cron，安裝器 `scripts/install-watchdog.sh` 依平台注入）。`running` 且心跳逾 20 分鐘且 transcript 沒在動 → `claude --resume` 復活（上限 3 次）；`awaiting_next_batch` → 開新 session 跑「/dev 繼續 <task>」。API/斷網期間復活會失敗，下一輪自動再試（輪詢直到成功）
-
-### 大型任務切批（批次 = Session，控制 context 膨脹）
-
-- **觸發**: architect triage 為大改且可分解為多批、或預估單一 session context 撐不完（如整專案重構）→ 步驟 0 就切批寫進驗收清單
-- **每批結束**: 寫交接檔 `~/.claude/state/<task>-handoff.md`（本批完成內容、commit hash、下一批輸入、地雷）→ state 標 `awaiting_next_batch` → 回報本批結果後結束本 session 工作
-- **接續**: 看門狗自動開新 session（或使用者手動「/dev 繼續 <task>」）——新 process = 乾淨 context，資訊靠交接檔 + 檢查點無損傳遞
-- **配套紀律**: 大型任務中主 Claude 只當 orchestrator，不親自 Read 大檔原始碼、重活一律委派 agent（subagent 的工具輸出不進主 context）
+- 任何走五步驟的任務必維護檢查點檔 `~/.claude/state/<任務slug>.json`：步驟 0 凍結後建立，**每個 gate 轉換（步驟切換、reviewer 回合結束、push、部署放行、批次結束）必更新**；等使用者輸入標 `awaiting_user`、完成標 `done`——這是看門狗斷線復活與跨 session 接續的生命線，不可省略
+- 大改可分解為多批、或預估單一 session context 撐不完 → 步驟 0 就切批寫進驗收清單；每批結束寫交接檔 `~/.claude/state/<task>-handoff.md` 並標 `awaiting_next_batch`；大型任務中主 Claude 只當 orchestrator，不親自 Read 大檔原始碼、重活一律委派 agent
+- 看門狗（`scripts/watchdog.sh`，launchd / cron 每 10 分鐘）自動復活中斷任務與接續下一批，主 Claude 無需操作
 
 ### 例外（主 Claude 可直接處理，不用走 architect）
 
@@ -253,6 +237,8 @@
 ## 選用模組：Codex CLI 異模型第二意見（預設停用）
 
 > **啟用狀態：`disabled`（預設）。** 本節是選用整合——不是每個人都用 Codex。未安裝 Codex 或不想用者，整節可忽略或刪除，五步驟流程完全不受影響。要啟用：安裝 Codex CLI（`brew install codex`）並登入後，把本行改為 `enabled`。
+>
+> **原版搭配說明（memory 模式）**：本範本的原始（私人）配置把這類工具的「操作細節」放在 Claude Code 的 auto-memory（`MEMORY.md` 索引＋個別記憶檔），CLAUDE.md 只留護欄與一行指標，以節省每個 session 的常駐 context。公開範本不含 memory 目錄，因此本節保留全文自包含；導入本範本後若你也建立了 memory 制度，建議比照「護欄常駐、細節下放 memory」收納。
 
 Codex（OpenAI 的 coding agent CLI）可作為**選用**的異模型第二意見來源。同模型的 reviewer 有系統性盲點，異模型視角在關鍵時刻價值高；但額度有限，呼喚頻率要低，且**絕不能讓流程依賴他**。
 

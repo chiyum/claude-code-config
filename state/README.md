@@ -1,6 +1,6 @@
 # state/ — 任務檢查點與看門狗
 
-斷線自我恢復 + 跨 session 接續的共用基建。制度全文見 `~/.claude/CLAUDE.md`「檢查點與看門狗」章節。
+斷線自我恢復 + 跨 session 接續的共用基建。骨架規約見 `~/.claude/CLAUDE.md`「檢查點與切批」節；執行細節即本檔＋dev skill。
 
 ## 檢查點檔 `<任務slug>.json`
 
