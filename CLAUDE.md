@@ -95,6 +95,7 @@
    - reviewer 分工原則: 腳本已涵蓋的規則性問題（lint、go vet、Redis 寫入 TTL 配對等）reviewer 不需重複逐項檢查，應專注於機器無法判定的問題：欄位語義是否被多功能共用、跨 instance 行為是否成立、快取失效策略是否完整、async 邊界後的狀態假設是否仍有效等
    - **接著呼叫 `reviewer`**
    - reviewer 有意見 → 由主 Claude 把 reviewer 的問題清單回傳給 architect，兩者直到一致（最多回合 3 次，超過要回報使用者；**自主模式**下超限改為該項凍結記入 blockers、繼續其餘工作、最終回報一併列出）
+   - **資安審查觸發（基礎設施面）**：當本任務屬「架設或重大變更**伺服器 / 部署環境 / 對外服務**」（新主機、新增或改對外 port、反向代理、tunnel、新 container stack、新部署 pipeline、DB/Redis 暴露面變更）時，環境架好後主 Claude 必呼叫 `security-auditor` 做防禦式資安審查（八維度：網路暴露面 / 認證存取 / 金鑰機敏 / TLS / 儲存 / 容器 / 反代 header / 日誌），輸出風險分級清單，🔴 高風險項退回 architect 修（與 reviewer 回合分開計）。與 reviewer 分工：reviewer 看程式碼，security-auditor 看執行環境。**純功能 / 純程式碼修改不觸發**；對外主動掃描需先取得使用者授權。
    - **設計鏈成對觸發（正方 ui-designer × 反方 design-reviewer）**：任務含設計 / 切版 / 視覺意圖、或要「從零長出全新頁面」時，先由主 Claude 呼叫 `ui-designer` 產出設計規格（新視覺 / 風格重定義先出三 direction 靜態預覽給使用者挑；全新頁面自動走精簡規格模式）→ architect 照規格實作 → reviewer 通過後呼叫 `design-reviewer` 以該規格做三視口截圖驗收（構圖 / 間距 / 字體 / 色彩 / 動效 / 三態），退修回 architect，上限 3 回合（與 reviewer 回合分開計）。**沒開正方就不開反方**——既有版型微調、純邏輯 / 後端不觸發，避免流程變重
    - 主 Claude 不直接改 code
 
@@ -149,6 +150,7 @@
 - 呼叫 reviewer：附上 commit hash + 需求描述 + 重點審查清單
 - 呼叫 QA：附上要測的功能、場景、預期結果；明確說是「本地測試」還是「dev 測試」
 - 呼叫 PM：附上產品代號（PM 會自行從 INDEX.md 載入）+ 要驗收的功能
+- 呼叫 security-auditor：附上產品代號、本次架設 / 變更的環境範圍（哪台主機 / 哪些 port / 哪些 container）、dev 還是 prod；主動對外掃描前需先取得使用者授權
 - 呼叫 ui-designer：附上任務目標、產品代號、使用者選定的 DESIGN.md（或說明無）、範圍（哪幾頁）；是否需要三 direction 由其自行判斷
 - 呼叫 design-reviewer：附上頁面 URL / 本地啟動方式、本次改動範圍、產品代號、設計基準來源（有 ui-designer 規格檔時優先附它）；第 2 輪起附上前一輪退修清單供複驗
 

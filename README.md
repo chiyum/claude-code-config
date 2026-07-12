@@ -24,7 +24,8 @@ claude-code-config/
 │   ├── qa.md                  # QA：本地 + 線上測試
 │   ├── reviewer.md            # 審查員：code review
 │   ├── ui-designer.md         # 視覺設計師（正方）：動 code 前產設計規格 / 三 direction 預覽
-│   └── design-reviewer.md     # 視覺審查員（反方）：三視口截圖六維度視覺驗收
+│   ├── design-reviewer.md     # 視覺審查員（反方）：三視口截圖六維度視覺驗收
+│   └── security-auditor.md    # 資安審查員（基礎設施面）：伺服器架好後八維度防禦式資安審查
 ├── hooks/
 │   └── slack-notify.sh        # Stop hook：完成回覆後推 Slack
 ├── scripts/                   # 流程用確定性腳本
@@ -116,6 +117,7 @@ QA/PM 說「通過」不算數，要能被確定性驗證：
 | **pm** | 驗收 | 產品無關設計，每次從 INDEX.md 載入對應產品配置 |
 | **ui-designer** | 視覺設計（正方） | 設計/切版任務與全新頁面在動 code 前產出設計規格（token 對映、版面構圖、數值級動效 spec）；大型視覺先出三 direction 預覽供挑選 |
 | **design-reviewer** | 視覺驗收（反方） | 三視口截圖 + 六維度審查（構圖/間距/字體/色彩/動效/三態），以正方規格為基準退修；成對觸發，沒開正方不開反方 |
+| **security-auditor** | 資安審查（基礎設施面） | 伺服器 / 部署環境架設或重大變更後，八維度防禦式審查（網路暴露面/認證存取/金鑰機敏/TLS/儲存/容器/反代 header/日誌），輸出風險分級清單；只審不改、不做攻擊性操作，對外主動掃描需授權；與 reviewer 分工——reviewer 看程式碼、本 agent 看執行環境 |
 
 ### 4. 產品配置體系
 
