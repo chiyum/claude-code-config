@@ -149,10 +149,20 @@ def apply_notification_fallback(run):
         bucket["output_tokens"] += tok  # 通知只給總數，記為 output 概數
 
 
+# 制度檔案路徑：只有這些路徑的變動才算「制度版本」改變（config_commit 分組 key 的依據）。
+# 不能直接用 repo HEAD——每補一張知識卡 / 寫一份驗收清單 HEAD 就跳一次，
+# 導致每筆 run 綁到獨一無二的 commit，永遠湊不滿「同一制度版本 ≥5 筆」的比較門檻。
+INSTITUTION_PATHS = ["CLAUDE.md", "agents", "skills", "scripts",
+                     "DECISION_LOG.md", "DESIGN_FLOW.md"]
+
+
 def config_commit():
+    """取「制度檔案」最後一次被改動的 commit（而非 repo HEAD）作為分組 key。"""
     try:
-        return subprocess.run(["git", "-C", CLAUDE, "rev-parse", "--short", "HEAD"],
-                              capture_output=True, text=True, timeout=10).stdout.strip() or "unknown"
+        out = subprocess.run(
+            ["git", "-C", CLAUDE, "log", "-1", "--format=%h", "--"] + INSTITUTION_PATHS,
+            capture_output=True, text=True, timeout=10).stdout.strip()
+        return out or "unknown"
     except Exception:
         return "unknown"
 

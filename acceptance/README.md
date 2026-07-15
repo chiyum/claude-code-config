@@ -53,5 +53,12 @@
 - 用途: 步驟 2 與步驟 4 的 QA/PM 驗收【唯一依據】。architect 更新的規格書僅作為文件，不作為驗收依據
 - 需求中途變更: 由使用者明示後，回到步驟 0 重新產生並確認新清單，舊清單標記為 superseded
 
+## 證據留存策略
+
+- `evidence/` 目錄（截圖、log 等大檔）保留至**任務閒置滿 7 天**，之後由看門狗（`scripts/watchdog.sh` 職責 4）自動刪除
+- 驗收清單 `.md`（任務目錄根層）**永久保留**，作為任務歷史
+- 「閒置」= 任務目錄內所有檔案的 mtime 都超過 7 天，且 state 檔不存在或狀態為 done；`awaiting_user` / `running` 中的任務證據絕不清
+- 調整保留天數: 在 `~/.claude/state/watchdog.conf` 設 `EVIDENCE_RETENTION_DAYS=<天數>`
+
 > 註：本目錄在公開範本 repo 中只放本 README 當說明；實際任務清單寫在使用者本機的
 > `~/.claude/acceptance/`。

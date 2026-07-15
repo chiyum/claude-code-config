@@ -4,6 +4,7 @@
 #   1. running 且心跳逾期且 session 真的死了 → claude --resume 復活（上限 MAX_RESTART 次）
 #   2. awaiting_next_batch → 開新 session 接續下一批（批次=Session 制度）
 #   3. done 超過保留天數 → 清理 state / handoff / questions 檔
+#   4. 任務閒置超過保留天數 → 清理 acceptance/<任務>/evidence/ 證據大檔（驗收清單 .md 永久保留）
 # 設計原則: 冪等（重複執行無副作用）、單實例鎖、絕不動 awaiting_user 的任務
 # 排程器安裝見 install-watchdog.sh；state 檔格式見 ../state/README.md
 
@@ -83,5 +84,28 @@ for f in "$STATE_DIR"/*.json; do
 
     # awaiting_user 或未知狀態: 一律不動
   esac
+done
+
+# ── 職責 4: acceptance 證據清理 ──────────────────────────────
+# 任務閒置超過 EVIDENCE_RETENTION_DAYS 天後刪 evidence/ 目錄（截圖等大檔）。
+# 驗收清單 .md 位於任務目錄根層，永久保留不受影響。
+# 判定「閒置」= 整個任務目錄內沒有任何檔案在保留天數內被動過——
+# 用檔案 mtime 而非 state 的 done 時間，因為舊任務的 state 檔已被職責 3 清掉。
+EVIDENCE_RETENTION_DAYS=${EVIDENCE_RETENTION_DAYS:-7}
+ACCEPT_DIR="$HOME/.claude/acceptance"
+for d in "$ACCEPT_DIR"/*/; do
+  [ -d "${d}evidence" ] || continue
+  task=$(basename "$d")
+  # 任務還活著（state 檔存在且狀態非 done）→ 絕不動它的證據
+  sf="$STATE_DIR/$task.json"
+  if [ -f "$sf" ]; then
+    st=$(jq -r '.status // empty' "$sf" 2>/dev/null)
+    [ "$st" != "done" ] && continue
+  fi
+  # 保留天數內任務目錄有任何動靜 → 視為仍在使用，跳過
+  [ -n "$(find "$d" -type f -mtime -"$EVIDENCE_RETENTION_DAYS" 2>/dev/null | head -1)" ] && continue
+  sz=$(du -sh "${d}evidence" 2>/dev/null | cut -f1)
+  rm -rf "${d}evidence"
+  log "🧹 清理驗收證據 $task/evidence（$sz，任務閒置超過 ${EVIDENCE_RETENTION_DAYS} 天）"
 done
 exit 0

@@ -19,7 +19,7 @@
 
 ## run 記錄欄位語義
 
-- `config_commit`：收集當下 `~/.claude` repo 的 HEAD——把 run 綁到當時的制度版本，分組比較的 key
+- `config_commit`：「制度檔案」（CLAUDE.md / agents / skills / scripts / DECISION_LOG.md / DESIGN_FLOW.md）最後一次被改動的 commit——把 run 綁到當時的制度版本，分組比較的 key。**不是 repo HEAD**：知識卡、驗收清單、產品配置的 commit 不改變此值，否則每補一張知識卡分組 key 就跳一次，永遠湊不滿同組樣本
 - `tokens.main_loop` / `tokens_by_agent.<type>`：主迴圈與各 agent 類型的 token 分帳（in / out / cache write / cache read）
 - `tokens.total`：全部加總。**注意成本主體通常是 cache read**，比較時 out 與 cache read 都要看
 - `agent_calls`：各 agent 類型派遣次數；`reviewer` 次數 ≈ 審查回合數、`qa`/`pm` 多次 ≈ 有退回重驗——這些是「流程順不順」的 proxy 指標
