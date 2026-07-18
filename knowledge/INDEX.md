@@ -57,6 +57,7 @@ status: validated                # validated=線上實證 / proposed=推論
 | 問題類別 | 知識卡 |
 |---|---|
 | **resilience（韌性）** | [example-card] |
+| **problem-orientation / goalpost-moving（碰牆先在約束內解，別反射性改球門）** | [solve-within-constraints-before-moving-the-goalpost] |
 | _(隨專案累積補上)_ | … |
 
 ---
@@ -66,6 +67,8 @@ status: validated                # validated=線上實證 / proposed=推論
 | 卡 | 一句話 | source | 狀態 |
 |---|---|---|---|
 | [example-card] | （範例）長駐 Pub/Sub 訂閱必須有 reconnect loop | example | validated |
+| [solve-within-constraints-before-moving-the-goalpost] | 想提「放寬需求 / 改門檻 / 大重寫」前必先附「約束內解題」舉證（控制變因 / 讀既有能力 / reuse 積木，三式擇一）；舉不出證不准提，舉得出證升級為 owner 決策 | institution | validated |
 
 <!-- 連結定義 -->
 [example-card]: example-card.md
+[solve-within-constraints-before-moving-the-goalpost]: solve-within-constraints-before-moving-the-goalpost.md

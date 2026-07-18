@@ -78,12 +78,13 @@
 0. **驗收條件凍結（開發前）**
    - 主 Claude 把使用者的【原始需求文字】（非轉譯、非摘要）交給 PM，產出三段式驗收清單（`### A<n> 行為`＋`驗證步驟`＋`預期結果`；格式、例句與規模比例原則見 `~/.claude/acceptance/README.md`）；PM 沒有寫檔工具，由主 Claude 寫入 `~/.claude/acceptance/<YYYYMMDD>-<任務簡述>.md`
    - 呈現給使用者確認後凍結，開發期間任何 agent 不得修改。使用者明示跳過、或屬例外情形（純讀取、非 code 修改）可略過；自主完成模式下凍結後直接往下走、最後一次性回報（清單仍要寫檔留存）
-   - **大型 / 自主任務加凍結「任務憲章」**（與清單同檔，格式見 `acceptance/README.md`）：範圍、非目標、預授權決策表、必問白名單。憲章凍結後 agent 想提問先對照憲章：能自答就自答並記入決策紀錄；**只有命中白名單（不可逆刪資料 / 花錢 / 資安 / 碰 prod / 需求自相矛盾）才准中斷**；其餘疑問寫 `~/.claude/state/<task>-questions.md` 批次結束一併呈報。日常小任務不強制憲章，各處「模糊先問」條款照舊
+   - **大型 / 自主任務加凍結「任務憲章」**（與清單同檔，格式見 `acceptance/README.md`）：範圍、非目標、預授權決策表、必問白名單。憲章凍結後 agent 想提問先對照憲章：能自答就自答並記入決策紀錄；**只有命中白名單（不可逆刪資料 / 花錢 / 資安 / 碰 prod / 需求自相矛盾 / 動球門且舉不出「約束內解不掉」的證據）才准中斷**；其餘疑問寫 `~/.claude/state/<task>-questions.md` 批次結束一併呈報。日常小任務不強制憲章，各處「模糊先問」條款照舊
 
 1. **architect 開發**
    - 主 Claude 用 `Agent tool subagent_type: "architect"`，把使用者原始需求 + 已蒐集的上下文（檔案路徑、約束、相關發現）傳給 architect
    - architect 自動判斷「直接實作模式」或「三方案分析模式」；三方案模式會停下來等使用者選方案
      - **自主模式例外**（/dev、使用者授權「不用問做完再回報」）: 主 Claude 直接採納 architect 的推薦方案，理由記入最終回報「我幫你做的決定」清單；屬 ADR 門檻照常寫 ADR，不停等使用者
+   - **約束內解題優先（別反射性改球門）**：architect / reviewer / 除錯碰到牆時，預設第一反應是「現有條件下怎麼把球踢進去」，不是「把球門改大」。凡要提「放寬驗收 / 改需求 / 改凍結門檻 / 縮範圍 / 大重寫 / 造新機制取代硬解」這類**動球門**方案，**必先附一段「約束內解題」舉證**（三式擇一：控制變因跑一個反例 / 先讀既有能力再說「缺」/ reuse 既有積木試過）；舉不出證據不准提改球門，回頭在約束內解。動球門且舉不出證＝命中必問白名單（自主模式也要停下問使用者）。守則與舉證三式全文見 `~/.claude/knowledge/solve-within-constraints-before-moving-the-goalpost.md`
    - **規格書必須同步更新**：architect 實作 code 變更時，必須同時更新該產品在 `~/.claude/products/<product>.md`「規格書與文件」區塊列出的相關規格檔（新需求 → 新增章節；行為變更 → 改該章節；廢棄功能 → 刪該章節）。code + 規格更新放在**同一個 commit**，避免下一個 session 的開發者（不論人或 Claude）看不到差異
    - 若需求屬於規格未涵蓋的新功能，或產品配置內未列任何規格檔 → architect 必須主動在回報時提出「缺規格書，請使用者決定要新增哪一份」，而不是默默跳過
    - **重大技術決策立即記 ADR**：當這次工作包含值得記錄的決策（語言/框架/函式庫選型、重大架構模式、資料庫/儲存結構性決定、重大取捨、回滾成本高/不可逆、推翻先前決策）時，architect 在該 repo `docs/adr/` 寫一筆 ADR（範本與觸發門檻見 `~/.claude/DECISION_LOG.md`）並更新 `docs/adr/README.md`，與 code + 規格放**同一個 commit**。一般 bug 修復 / 小重構 / 照既有規格實作不需寫
@@ -130,7 +131,8 @@
    - dev 測試有問題 → 回到第 1 步
    - 全部通過 → 主 Claude 回報使用者「dev 驗收完成」，**停下來等指令**（是否合 prod、是否再加功能等，由使用者決定）
    - **回報必附「1 分鐘複驗指引」**：確切 URL + 帳號 + 3 步以內操作 + 應看到什麼（直接從凍結清單的驗證步驟摘出最關鍵 1-2 條）。使用者照著走走不通 = 流程缺陷，立即回到第 1 步，不得歸因於使用者操作
-   - **回報前收 run 遙測**：跑 `python3 ~/.claude/scripts/collect-run-metrics.py --slug <任務slug> --sessions <session id>`，把 token 分帳與 agent 派遣摘要附進回報；使用者驗收後以 `rate-run.py` 寫回一行 verdict（制度見 `~/.claude/run-metrics/README.md`）
+   - **回報前收 run 遙測**：跑 `python3 ~/.claude/scripts/collect-run-metrics.py --slug <任務slug> --sessions <session id>`，把 token 分帳與 agent 派遣摘要附進回報（制度見 `~/.claude/run-metrics/README.md`）
+   - **回報末尾必主動問任務評分**（走過五步驟的大任務才問，切批的中間批次、gate、小瑣事都不問）：問「這次任務安排如何？①順暢 ②還行有小地方可改 ③有明顯卡點／冤枉路，可補一句」，得到回覆即以 `rate-run.py` 寫回 verdict。**問了不追**：使用者沒回就擱著，哪天回了再補寫；無 verdict 的 run 不計入複盤門檻。寫完 verdict 後跑 `python3 ~/.claude/scripts/retro-digest.py --count`，**≥8 則順口再問一句「要不要順便 /retro 複盤」**——使用者點頭才跑，說晚點就下次再問；複盤絕不自動觸發、絕不在自主開發中途觸發（制度見 `~/.claude/skills/retro/SKILL.md`）
 
 ### 檢查點與切批（斷線自我恢復；細節見 `~/.claude/state/README.md` 與 dev skill）
 

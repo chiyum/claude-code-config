@@ -19,7 +19,7 @@ flowchart TD
       S0 --> UDQ{"設計意圖 / 全新頁面?"}
       UDQ -->|"是"| UD["ui-designer（正方）產設計規格<br/>新視覺先出三 direction 預覽供挑選"]
       UDQ -->|"否"| S1
-      UD --> S1["① architect（重活階段★）<br/>先讀 playbook 再深入知識卡 → 實作＋同步改規格 → 重大決策寫 ADR → 撞坑補卡＋連動 playbook → commit 繁中"]
+      UD --> S1["① architect（重活階段★）<br/>先讀 playbook 再深入知識卡 → 實作＋同步改規格 → 重大決策寫 ADR → 撞坑補卡＋連動 playbook → commit 繁中<br/>碰牆先約束內解：提「放寬/改門檻/重寫」必先附舉證，否則命中必問白名單"]
       S1 --> PR["pre-review.sh 確定性預檢<br/>lint / go vet / Redis TTL 配對掃描（於產品 repo 根目錄）"]
       PR --> PROK{"通過?"}
       PROK -->|"否（附輸出給 architect 修，【不計入】reviewer 3 回合）"| S1
@@ -45,7 +45,7 @@ flowchart TD
       WAIT --> DevQA
       DevQA --> Dg{"通過?"}
       Dg -->|否| S1
-      Dg -->|是| S5["⑤ 回報「dev 驗收完成」＋ 1 分鐘複驗指引（URL＋帳號＋≤3 步＋應看到什麼）<br/>停下等指令（合 prod / 加功能由使用者決定）"]
+      Dg -->|是| S5["⑤ 回報「dev 驗收完成」＋ 1 分鐘複驗指引（URL＋帳號＋≤3 步＋應看到什麼）<br/>主動問任務評分（①順暢②還行③卡點）→ rate-run 寫 verdict，問了不追<br/>verdict 累積 ≥8 順口問「要不要 /retro 複盤」（絕不自動觸發）<br/>停下等指令（合 prod / 加功能由使用者決定）"]
     end
 
     subgraph Resilience["檢查點與看門狗（斷線自我恢復）＋ 批次=Session"]
