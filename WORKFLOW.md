@@ -11,6 +11,8 @@ flowchart TD
     Type -->|"純讀取 / 改非 code 檔 / 使用者說直接改"| Direct["主 Claude 直接處理，不走 architect"]
     Type -->|"/dev 或自然語言授權自主開發"| Dev["/dev skill 入口<br/>標準 / auto（零停頓）/ 繼續（接續中斷或下一批）<br/>建檢查點檔 state/&lt;slug&gt;.json"]
     Type -->|"修改 code（單點指示）"| S0
+    Type -->|"模糊大需求（新產品且 ≥2 關鍵維度未指明）"| Disc["/discover 需求訪談<br/>七大面向分階段問（每題選項＋白話＋推薦）→ 需求釐清書<br/>「不知道」給預設值記入幫你做的決定"]
+    Disc --> S0
     Dev --> S0
 
     subgraph Flow["標準開發流程（骨架確定性；gate 與 3 回合上限不交給模型；每個 gate 轉換更新檢查點）"]

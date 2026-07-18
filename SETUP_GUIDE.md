@@ -138,6 +138,7 @@ claude
 | `skills/test-*-integrity/` | 訊息系統壓力測試腳本 | 🔧 選裝 |
 | `skills/verify-ocr-version/` | 驗證 sidecar 部署版本 | 🔧 選裝 |
 | `skills/retro/` + `scripts/retro-digest.py` | 宏觀自我複盤迴圈：任務完成主動收評分，累積 ≥8 個 verdict 提議複盤，找跨任務流程反模式、產提案由使用者圈選才改規則 | 🔧 選裝（推薦） |
+| `skills/discover/` | 需求訪談：模糊大需求先走七大面向結構化訪談產出需求釐清書，再進驗收凍結，避免做一版後反覆修改 | 🔧 選裝（推薦） |
 
 ## 常見問題
 
