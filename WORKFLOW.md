@@ -65,7 +65,7 @@ flowchart TD
       direction TB
       Q{"這題靠更多平行視角，<br/>還是更深單線思考?"}
       Q -->|"小改 · 單線好解"| M1["單 agent（high）直接做<br/>（不觸發 workflow）"]
-      Q -->|"多視角：大改 / 三方案 / 多維審查"| M2["展開 Dynamic Workflow：多個平行 agent（每隻仍 high）<br/>對抗式互驗｜唯讀＋維度互斥＋單一 convergence step（護欄 B）"]
+      Q -->|"多視角：大改 / 三方案 / 多維審查"| M2["展開 Dynamic Workflow：判斷葉 high、機械葉可降 low/medium<br/>對抗式互驗｜唯讀＋維度互斥＋單一 convergence step（護欄 B）"]
       Q -->|"極難單線推理：複雜演算法 / 深層 race / 極易一步錯"| M3["單葉升 xhigh（opts.effort=xhigh）<br/>只拉高那一隻，須先向使用者宣告理由"]
     end
 
