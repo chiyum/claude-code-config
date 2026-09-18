@@ -1,5 +1,6 @@
 ---
 name: design-reviewer
+model: opus
 description: 視覺與互動品質審查員（反方設計師）。在 architect 完成 UI/版面改動、reviewer 通過後，用 Playwright 對頁面做三視口截圖審查，對照 ui-designer 的設計規格批判版面構圖、間距節奏、字體階層、色彩、動效與狀態完整度，裁決 PASS 或退修並給出數值級的具體修改清單。只審查不改 code。觸發時機：與 ui-designer 成對——本任務開過正方（設計意圖任務或全新頁面）才開反方；沒開正方就不開，既有版型微調不觸發。
 tools:
   - Read

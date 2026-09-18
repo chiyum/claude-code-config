@@ -66,6 +66,7 @@ claude-code-config/
 走「骨架確定性、葉子按需委派」路線：五步驟骨架、所有 gate、回退條件一律由 CLAUDE.md 確定性控制，不交給模型自動編排。
 
 - **Session 基準 effort 固定 `high`**：日常主迴圈與 Agent tool 派出的 subagent 跑 high，不整段開 xhigh 自動編排；workflow 內的機械葉（收證據 / 對清單 / 截圖比對）可降 low/medium 省 token，判斷葉維持 high。
+- **所有 subagent 固定跑 Opus**：每份 `agents/*.md` frontmatter 釘 `model: opus`，`settings.json` 另設 `env.CLAUDE_CODE_SUBAGENT_MODEL=opus` 讓內建 agent（general-purpose / Explore / Plan）也走同一顆模型——審查與驗收這類判斷型工作不因模型降級而失準。要省成本就改成 `sonnet`，兩處一起改。
 - **火力靠「加人手」而非「加單人腦力」**：重活（大改、三方案、對抗式 review）由 orchestrator 單點展開 **Dynamic Workflow**，以多個平行 agent（每隻仍 high）分工。
 - **例外可「單葉」升 xhigh**：極難的單線推理（複雜演算法、深層 race condition）可把「那一隻」agent 單獨拉高，需先向使用者宣告理由。
 - **兩道護欄**：(A) architect ↔ reviewer 外層 3 回合上限與各 gate 由骨架決定，模型不得自行跳過或加碼；(B) one-agent-one-partition — 平行 agent 一律唯讀且維度互斥，只允許最後單一 convergence step 匯總。

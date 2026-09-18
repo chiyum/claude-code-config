@@ -159,6 +159,15 @@ npx @anthropic-ai/mcp-playwright --help
 
 在 `~/.claude/skills/` 下建一個資料夾，裡面放 `SKILL.md`（遵循 frontmatter 格式）。參考 `merge-prod/SKILL.md` 的結構。
 
+### Q: 怎麼改 subagent 用哪顆模型？
+
+兩處要一起改，漏一處就會有 agent 掉回預設模型：
+
+1. `agents/*.md` 的 frontmatter `model:` 欄 —— 管自訂 agent（architect / reviewer / qa / pm 等），優先權最高。
+2. `settings.json` 的 `env.CLAUDE_CODE_SUBAGENT_MODEL` —— 管內建 agent（general-purpose / Explore / Plan）。
+
+本配置兩處都設 `opus`（審查、驗收這類判斷型工作對模型能力敏感）。想省成本就兩處一起改成 `sonnet`。改完要重開 Claude Code 才生效——`env` 是啟動時讀的。
+
 ### Q: settings.json 裡的 `skipDangerousModePermissionPrompt` 和 `skipAutoPermissionPrompt` 是什麼？
 
 這兩個設定讓 Claude 執行工具時不用每次都問你「可以嗎？」。適合信任 Claude 的進階使用者。如果你想保守一點，把它們改成 `false`。

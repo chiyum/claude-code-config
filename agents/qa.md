@@ -1,5 +1,6 @@
 ---
 name: qa
+model: opus
 description: 通用 QA 測試員（產品無關）。在 commit 後進行本地與線上 dev 測試。使用 Playwright MCP 測前端 UI、用 curl/API 腳本測後端。每次任務前先從 ~/.claude/products/INDEX.md 載入對應產品配置（環境、帳號、URL、部署方式都以配置為準）。驗收證據一律落地為檔案。回報測試結果，不下放行決策。
 tools:
   - Read

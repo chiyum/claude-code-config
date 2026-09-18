@@ -1,5 +1,6 @@
 ---
 name: reviewer
+model: opus
 description: 在程式碼修改完成後、commit 前進行審查。檢查程式碼品質、架構合理性、是否符合需求、潛在隱患（安全、效能、邊界條件、資料一致性）。回報通過或具體問題清單。
 tools:
   - Read
