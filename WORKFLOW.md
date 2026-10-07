@@ -2,22 +2,30 @@
 
 這張圖是 [`CLAUDE.md`](CLAUDE.md) 裡「編排協定 + 標準開發流程（步驟 0~5）」的視覺化版本，方便一眼看懂主 Claude（orchestrator）如何從 session 啟動、任務分流、驗收凍結、pre-review 預檢、五步驟開發、事件驅動部署驗證到火力配置與收尾。內容以 `CLAUDE.md` 為準；兩者若有出入，一律以 `CLAUDE.md` 文字規範為單一真相。
 
+> lane 分級（`acceptance/LANE_PROTOCOL.md`）與外部凍結規格模式（`acceptance/EXTERNAL_SPEC_PROTOCOL.md`）的細節以各自協定檔為準，圖中只畫分流點。
+>
 > 選用模組不入圖：**Codex 異模型第二意見**（預設停用）屬骨架外的參考意見來源，呼喚前跑 `codex-probe.sh` 探測、失敗即棄不影響任何 gate，見 `CLAUDE.md`「選用模組：Codex CLI」節。
 
 ```mermaid
 flowchart TD
-    Start(["Session 啟動｜基準 effort = high（固定，不整段開 ultracode/xhigh）"]) --> Ctx["產品上下文偵測<br/>觸發訊號 → INDEX.md → &lt;product&gt;.md → MEMORY.md → 一行通知已對齊"]
+    Start(["Session 啟動｜基準 effort = high（固定，不整段開 ultracode/xhigh）"]) --> Ctx["產品上下文偵測<br/>觸發訊號 → INDEX.md → &lt;product&gt;.md → MEMORY.md → 一行通知已對齊<br/>提到主機別名 / IP → 先讀 products/HOSTS.md"]
     Ctx --> Type{"任務類型?"}
     Type -->|"純讀取 / 改非 code 檔 / 使用者說直接改"| Direct["主 Claude 直接處理，不走 architect"]
     Type -->|"/dev 或自然語言授權自主開發"| Dev["/dev skill 入口<br/>標準 / auto（零停頓）/ 繼續（接續中斷或下一批）<br/>建檢查點檔 state/&lt;slug&gt;.json"]
-    Type -->|"修改 code（單點指示）"| S0
+    Type -->|"修改 code（單點指示）"| Lane
+    Type -->|"/dev [auto] --spec &lt;SPEC.md&gt;"| SpecB["入口 B：外部凍結規格模式<br/>verify-external-spec.py 驗 status / hash / 產品（DRAFT、SUPERSEDED、INVALID、DRIFT 一律停）<br/>target_environment=prod 必問 → PM 只做可測試性稽核（不重寫 A1～An）<br/>之後每個 gate 前跑 spec-gate.sh；要動規格只能輸出 SPEC_CHANGE_REQUIRED"]
+    SpecB --> S1
     Type -->|"模糊大需求（新產品且 ≥2 關鍵維度未指明）"| Disc["/discover 需求訪談<br/>七大面向分階段問（每題選項＋白話＋推薦）→ 需求釐清書<br/>「不知道」給預設值記入幫你做的決定"]
-    Disc --> S0
-    Dev --> S0
+    Disc --> Lane
+    Dev --> Lane
+    Lane{"定 lane（試行）<br/>使用者沒指定就問一次（自主模式也問，唯一停點）"}
+    Lane -->|"S：一句話能描述的 diff"| SFast["S 快速道<br/>architect → build / lint → commit → push → 部署後親自點一次<br/>免 reviewer / PM / 清單（state 照建）"]
+    Lane -->|"M / L"| S0
+    SFast --> S5
 
     subgraph Flow["標準開發流程（骨架確定性；gate 與 3 回合上限不交給模型；每個 gate 轉換更新檢查點）"]
       direction TB
-      S0["⓪ 驗收條件凍結（開發前）<br/>PM 依【原始需求】產出三段式清單（A&lt;n&gt; 行為＋驗證步驟＋預期結果，驗法凍結定案）<br/>大型/自主任務加任務憲章（預授權決策＋必問白名單）→ 主 Claude 寫入 acceptance/ → 使用者確認後凍結"]
+      S0["⓪ 驗收條件凍結（開發前）<br/>主 Claude 先寫「理解回述」（我理解的 / 我假設的 / 我不會做的 / 具體例子）<br/>PM 依【原始需求】產出三段式清單（A&lt;n&gt; 行為＋驗證步驟＋預期結果，驗法凍結定案）<br/>L 級與大型/自主任務加任務憲章（預授權決策＋必問白名單）→ 主 Claude 寫入 acceptance/ → 使用者確認後凍結"]
       S0 --> UDQ{"設計意圖 / 全新頁面?"}
       UDQ -->|"是"| UD["ui-designer（正方）產設計規格<br/>新視覺先出三 direction 預覽供挑選"]
       UDQ -->|"否"| S1
@@ -33,7 +41,7 @@ flowchart TD
       DG -->|"是"| DR["design-reviewer 視覺 gate（反方）<br/>三視口截圖 × 六維度，以設計規格為基準（≤3 回合）"]
       DR -->|"退修"| S1
       DG -->|"否（沒開正方不開反方）"| S2
-      DR -->|"PASS"| S2["② 本地驗證＋反假驗收三層 gate<br/>QA/PM 逐條落地證據 evidence/ → verify-evidence.sh 確定性檢查<br/>→ 主 Claude 抽驗截圖 → 大改動加開反方 PM 找反例"]
+      DR -->|"PASS"| S2["② 本地驗證＋反假驗收三層 gate<br/>QA/PM 逐條落地證據 evidence/ → verify-evidence.sh 確定性檢查<br/>→ 主 Claude 抽驗截圖 → 大改動加開反方 PM 找反例<br/>期望值須獨立於受測物（回推原始輸入或線上落庫，不拿自己產的計畫檔對）"]
       S2 --> L{"通過?"}
       L -->|"任一失敗"| S1
       L -->|是| S3["③ push 各 repo remote main<br/>讀產品配置「git 帳號歸屬」欄（缺欄問一次即回寫）＋ 處理跨 repo 依賴（go.mod 升版）"]
@@ -47,13 +55,13 @@ flowchart TD
       WAIT --> DevQA
       DevQA --> Dg{"通過?"}
       Dg -->|否| S1
-      Dg -->|是| S5["⑤ 回報「dev 驗收完成」＋ 1 分鐘複驗指引（URL＋帳號＋≤3 步＋應看到什麼）<br/>主動問任務評分（①順暢②還行③卡點）→ rate-run 寫 verdict，問了不追<br/>verdict 累積 ≥8 順口問「要不要 /retro 複盤」（絕不自動觸發）<br/>停下等指令（合 prod / 加功能由使用者決定）"]
+      Dg -->|是| S5["⑤ 回報「dev 驗收完成」＋ 1 分鐘複驗指引（URL＋帳號＋≤3 步＋應看到什麼）<br/>附 run 遙測（collect-run-metrics.py，時間窗取 state 的 started_at～ended_at）<br/>主動問任務評分（①順暢②還行③卡點）→ rate-run 寫 verdict，問了不追<br/>retro-digest.py --due 回 yes 才順口問「要不要 /retro 複盤」（絕不自動觸發）<br/>state 標 reported，停下等指令（合 prod / 加功能由使用者決定）"]
     end
 
     subgraph Resilience["檢查點與看門狗（斷線自我恢復）＋ 批次=Session"]
       direction TB
       SC["state/&lt;slug&gt;.json 檢查點<br/>每個 gate 轉換更新 current_step / next_action / 心跳"]
-      WD["watchdog.sh（launchd / cron 每 10 分鐘）<br/>running 心跳逾期且 transcript 沒動 → claude --resume 復活（上限 3 次）<br/>awaiting_next_batch → 開新 session「/dev 繼續」｜awaiting_user 不動"]
+      WD["watchdog.sh（launchd / cron 每 10 分鐘）<br/>running 心跳逾期且 transcript 沒動 → claude --resume 復活（上限 3 次）<br/>awaiting_next_batch → 開新 session「/dev 繼續」｜awaiting_user / reported 不動<br/>復活帶 state 的 config_dir（同一 profile）；閒置超過 14 天歸檔"]
       BATCH["大型任務切批：每批結束寫 handoff.md → 標 awaiting_next_batch → 新 session 乾淨 context 接續"]
       SC -.監控.-> WD
       WD -.拉起.-> BATCH
@@ -77,5 +85,5 @@ flowchart TD
     Report --> Hook
     Hook["Stop Hook：slack-notify.sh → 每次回覆推播到 Slack"]
 
-    Skill["Skill（自然語言觸發）<br/>/merge-prod · 訊息完整性壓測 · verify-ocr-version"] -.可被呼叫.-> Flow
+    Skill["Skill（自然語言觸發）<br/>/merge-prod · /spec-check · 訊息完整性壓測 · verify-ocr-version"] -.可被呼叫.-> Flow
 ```

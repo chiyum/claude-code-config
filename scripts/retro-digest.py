@@ -6,13 +6,16 @@
 
 用法：
   python3 retro-digest.py            # 輸出 digest markdown 到 stdout
-  python3 retro-digest.py --count    # 只印「未複盤且有 verdict 的 run 數」（給任務完成時判斷 >= N 用）
+  python3 retro-digest.py --count    # 只印「未複盤且有 verdict 的 run 數」
+  python3 retro-digest.py --due      # 印 yes/no：≥8 個評分、或 ≥10 筆 run（不論評分）、或距上次 ≥14 天，任一即到期（2026-09-29 起）
   python3 retro-digest.py --mark     # 複盤完成後呼叫：更新 .last-retro 時間戳
 
-設計原則：
+設計原則（2026-07-18 拍板）：
   - 不存計數器，一律從 .last-retro 時間戳推導，避免計數漂移
-  - 沒有 verdict 的 run 不計入門檻（問了不追，使用者補評後自然計入）
+  - 沒有 verdict 的 run 不計入 --count 門檻（問了不追，使用者補評後自然計入）
+  - 2026-09-29 追加 --due：評分率只有一成多時 --count 永遠湊不到 8，改以「run 數或天數」兜底
 """
+DUE_VERDICTS, DUE_RUNS, DUE_DAYS = 8, 10, 14
 import argparse, glob, json, os, sys, time
 
 HOME = os.path.expanduser("~")
@@ -45,6 +48,25 @@ def pending_runs(since):
     return out
 
 
+def all_runs_since(since):
+    """上次複盤後寫入的 run 記錄數（不論有無 verdict）"""
+    return sum(1 for p in glob.glob(os.path.join(RUNS_DIR, "*.json")) if os.path.getmtime(p) > since)
+
+
+def due(since, runs):
+    """回 (是否到期, 理由)。三條件任一成立即到期"""
+    n_all = all_runs_since(since)
+    days = (time.time() - since) / 86400 if since else 9999
+    reasons = []
+    if len(runs) >= DUE_VERDICTS:
+        reasons.append(f"評分 {len(runs)} ≥ {DUE_VERDICTS}")
+    if n_all >= DUE_RUNS:
+        reasons.append(f"run {n_all} ≥ {DUE_RUNS}")
+    if days >= DUE_DAYS:
+        reasons.append(f"距上次 {days:.0f} 天 ≥ {DUE_DAYS}")
+    return (bool(reasons), "；".join(reasons) or f"評分 {len(runs)}/{DUE_VERDICTS}、run {n_all}/{DUE_RUNS}、{days:.0f}/{DUE_DAYS} 天")
+
+
 def new_knowledge_cards(since):
     """上次複盤後新增/更新的知識卡（排除 INDEX 與 playbooks 目錄）"""
     out = []
@@ -60,6 +82,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--count", action="store_true", help="只印未複盤 run 數")
     ap.add_argument("--mark", action="store_true", help="更新 .last-retro 時間戳")
+    ap.add_argument("--due", action="store_true", help="印 yes/no 與理由：是否該提議 /retro")
     args = ap.parse_args()
 
     if args.mark:
@@ -73,6 +96,10 @@ def main():
 
     if args.count:
         print(len(runs))
+        return
+    if args.due:
+        ok, why = due(since, runs)
+        print(f"{'yes' if ok else 'no'}（{why}）")
         return
 
     # === 輸出 digest markdown ===

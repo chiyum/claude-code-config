@@ -13,6 +13,8 @@ backups/
 debug/
 downloads/
 channels/
+uploads/
+locks/
 
 # ===== 快取與遙測 =====
 cache/
@@ -30,6 +32,14 @@ mcp-needs-auth-cache.json
 **/access.json
 **/.env
 **/.env.*
+
+# 專門儲存各專案機密資訊的檔（明文 secret，永不上傳）
+SECRETS.local.md
+# secrets/：只放 age 密文與清單（明文永遠不進來；見 scripts/secrets-sync.sh）
+secrets/*
+!secrets/*.age
+!secrets/manifest.txt
+!secrets/recipients.txt
 
 # auto-memory（含 dev 帳密等個人脈絡）
 memory/

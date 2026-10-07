@@ -38,6 +38,7 @@ cp settings.json ~/.claude/settings.json
 cp mcp.json ~/.claude/mcp.json
 cp .gitignore ~/.claude/.gitignore
 cp DECISION_LOG.md ~/.claude/DECISION_LOG.md
+cp DESIGN_FLOW.md ~/.claude/DESIGN_FLOW.md   # 切版設計流程（只在設計意圖任務被讀）
 
 # Agent 定義（建議全裝）
 mkdir -p ~/.claude/agents
@@ -59,19 +60,21 @@ chmod +x ~/.claude/hooks/slack-notify.sh
 mkdir -p ~/.claude/products
 cp products/INDEX.md ~/.claude/products/
 cp products/example_product.md ~/.claude/products/
+cp products/HOSTS.md ~/.claude/products/        # 遠端主機登記表範本（有 SSH 主機才需要填）
 
 # Skill（選裝，按需要；skills/dev 是五步驟一鍵入口，建議裝）
 cp -r skills/ ~/.claude/skills/
 
 # 流程腳本 + 看門狗（建議全裝：pre-review 預檢、verify-deploy 部署驗證、
-# verify-evidence 驗收證據檢查、watchdog 斷線自我恢復）
+# verify-evidence 驗收證據檢查、watchdog 斷線自我恢復、pw-lock 瀏覽器互斥鎖、
+# run 遙測 / 複盤 / 外部規格模式的 python 腳本）
 mkdir -p ~/.claude/scripts ~/.claude/state
-cp scripts/*.sh ~/.claude/scripts/ && chmod +x ~/.claude/scripts/*.sh
+cp scripts/*.sh scripts/*.py ~/.claude/scripts/ && chmod +x ~/.claude/scripts/*.sh ~/.claude/scripts/*.py
 cp state/README.md state/watchdog.conf ~/.claude/state/
 
-# 驗收清單制度（規則檔）
+# 驗收清單制度（規則檔 + lane 分級協定 + 外部規格模式協定與完成報告模板）
 mkdir -p ~/.claude/acceptance
-cp acceptance/README.md ~/.claude/acceptance/
+cp acceptance/*.md ~/.claude/acceptance/
 ```
 
 ### 第 3 步：客製化
@@ -94,6 +97,33 @@ cp acceptance/README.md ~/.claude/acceptance/
 - 重要的業務規則
 
 然後在 `products/INDEX.md` 加一行。
+
+**選做：登記遠端主機**
+
+如果你會叫 Claude「連到某台電腦」，把 SSH 別名、IP、帳號與金鑰路徑填進 `~/.claude/products/HOSTS.md`（密碼不寫這裡，只寫「見 SECRETS 某章節」）。
+
+**選做：機敏資料跨機器同步（只有把 `~/.claude` 用 git 同步到多台機器時才需要）**
+
+帳密一律放 `~/.claude/SECRETS.local.md`（已在 `.gitignore`，不會進 git）。要讓另一台機器也拿到同一份，用 age 加密後只同步密文：
+
+```bash
+# 1. 安裝 age 並產生私鑰（私鑰只放密碼管理器與各機器本機，絕不進 git）
+brew install age
+mkdir -p ~/.config/age && age-keygen -o ~/.config/age/keys.txt && chmod 600 ~/.config/age/keys.txt
+
+# 2. 建立清單與公鑰（每行「密文名 明文路徑」；公鑰取自 age-keygen 輸出的 public key）
+mkdir -p ~/.claude/secrets
+echo "claude-secrets ~/.claude/SECRETS.local.md" > ~/.claude/secrets/manifest.txt
+age-keygen -y ~/.config/age/keys.txt > ~/.claude/secrets/recipients.txt
+
+# 3. 裝 pre-commit hook（擋明文機敏檔進 git、擋改了 SECRETS 卻沒重新加密）
+mkdir -p ~/.claude/githooks && cp githooks/pre-commit ~/.claude/githooks/ && chmod +x ~/.claude/githooks/pre-commit
+git -C ~/.claude config core.hooksPath githooks
+
+# 4. 日常：改完 SECRETS → 加密 → commit；另一台 pull 後解密
+bash ~/.claude/scripts/secrets-sync.sh encrypt
+bash ~/.claude/scripts/secrets-sync.sh decrypt   # 新機器第一次用 init（會設 hooksPath 並解密全部）
+```
 
 **選做：設定 Slack 通知**
 
@@ -137,7 +167,12 @@ claude
 | `skills/merge-prod/` | 自動化合併正式站部署分支 | 🔧 選裝 |
 | `skills/test-*-integrity/` | 訊息系統壓力測試腳本 | 🔧 選裝 |
 | `skills/verify-ocr-version/` | 驗證 sidecar 部署版本 | 🔧 選裝 |
-| `skills/retro/` + `scripts/retro-digest.py` | 宏觀自我複盤迴圈：任務完成主動收評分，累積 ≥8 個 verdict 提議複盤，找跨任務流程反模式、產提案由使用者圈選才改規則 | 🔧 選裝（推薦） |
+| `skills/retro/` + `scripts/retro-digest.py` | 宏觀自我複盤迴圈：任務完成主動收評分，`retro-digest.py --due` 到期（≥8 個評分 / ≥10 筆 run / 距上次 ≥14 天）提議複盤，找跨任務流程反模式、產提案由使用者圈選才改規則 | 🔧 選裝（推薦） |
+| `skills/spec-check/` + `acceptance/EXTERNAL_SPEC_PROTOCOL.md` + `scripts/*spec*` | 外部凍結規格模式：規格由外部治理者凍結時用 `/dev --spec <SPEC.md>` 開發，驗 hash、擋漂移、產完成報告；`/spec-check` 做凍結前可行性檢查 | 🔧 選裝 |
+| `acceptance/LANE_PROTOCOL.md` | lane 分級（S / M / L）試行協定：小改免 reviewer / PM / 清單，大改加憲章與線上預檢 | ✅ 推薦（CLAUDE.md 引用） |
+| `DESIGN_FLOW.md` | 切版設計流程：只在「設計 / 切版 / 風格」意圖任務才讀，DESIGN.md token 映射進專案既有設定 | ✅ 推薦（CLAUDE.md 引用） |
+| `products/HOSTS.md` | 遠端主機登記表範本 | 📋 參考 |
+| `scripts/secrets-sync.sh` + `githooks/pre-commit` | SECRETS 跨機器同步（age 加密）與防明文進 git 的 hook | 🔧 選裝 |
 | `skills/discover/` | 需求訪談：模糊大需求先走七大面向結構化訪談產出需求釐清書，再進驗收凍結，避免做一版後反覆修改 | 🔧 選裝（推薦） |
 
 ## 常見問題

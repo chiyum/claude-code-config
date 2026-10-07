@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# pre-commit — 兩道防呆：①明文機敏檔絕不進 git ②SECRETS 改了沒重新加密就擋
+set -u
+ROOT="$(git rev-parse --show-toplevel)"
+if git diff --cached --name-only | grep -qE '(^|/)SECRETS\.local\.md$|(^|/)keys\.txt$|\.env$'; then
+  echo "pre-commit: 暫存區含明文機敏檔，拒絕 commit" >&2; exit 1
+fi
+if [ -x "$ROOT/scripts/secrets-sync.sh" ] && command -v age >/dev/null; then
+  if ! out="$("$ROOT/scripts/secrets-sync.sh" status --quiet 2>&1 | grep DIRTY)"; then :; else
+    echo "pre-commit: 機敏檔有未加密改動，先跑 scripts/secrets-sync.sh encrypt 再 commit" >&2; echo "$out" >&2; exit 1
+  fi
+fi
+exit 0

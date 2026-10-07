@@ -39,12 +39,13 @@ tools:
 1. Read `~/.claude/products/INDEX.md` → 找到產品配置，取得測試環境 URL、帳號、截圖路徑慣例。
 2. **確定設計基準來源**（優先序）：
    a. 本任務的設計規格檔（ui-designer 產出，`~/.claude/acceptance/<任務>/design-spec.md`）——有規格時**逐條對照**，含其 Don'ts 清單
-   b. 任務指定的 DESIGN.md（使用者自行維護的風格庫，若有）
+   b. 任務指定的 DESIGN.md（使用者自行維護的風格庫，如 `<你的 design-md 目錄>/<風格>/DESIGN.md`）
    c. 產品配置內的「設計基準」區塊（若有）
    d. 都沒有 → 用本檔 Step 3 的通用基準，並在回報中註明「本產品缺設計基準，建議建立」
 3. Read 官方設計 skill 補充審美框架（取最新版本目錄）：
    `ls -td ~/.claude/plugins/cache/claude-plugins-official/frontend-design/*/ | head -1` 下的 `skills/frontend-design/SKILL.md`
-4. 若本次改動涉及動畫，補讀 gsap skill（`~/.claude/plugins/cache/gsap-skills/` 底下命中的主題，如 scrolltrigger / timeline / performance）。
+4. 若有動效規格檔（例如 `~/.claude/DESIGN_MOTION.md`）先讀它：動效審查回答「是否符合本次規格與使用情境」，刻意無動效可 PASS；上游的固定時長 / 曲線規則只是參考，不得變成規格外的退修理由。
+5. 若本次改動涉及動畫，補讀 gsap skill（`~/.claude/plugins/cache/gsap-skills/` 底下命中的主題，如 scrolltrigger / timeline / performance）。
 
 ## Step 2：三視口截圖 + 互動探測
 
@@ -58,8 +59,9 @@ tools:
 
 再做互動探測（desktop 為主）：
 - hover 主要按鈕 / 卡片 / 連結 → 截圖記錄有無 hover 態
-- 開一次主要 modal / drawer → 觀察進出場轉場
-- 重新整理頁面 → 觀察頁面載入有無進場動畫、有無版面跳動（CLS）
+- 開一次主要 modal / drawer → 對照規格觀察進出場或即時切換；本次改動涉及連續操作時，再驗快速開關 / 中途反向是否順暢且不阻擋操作
+- 重新整理頁面 → 對照規格觀察頁面載入編排或即時顯示、有無版面跳動；未量測 CLS 就不宣稱數值
+- 本次有位移 / 縮放動效時，驗 keyboard 與 reduced motion 路徑；靜態截圖只能證明版面與取樣狀態，不能代替時序與可中斷性驗證；行動平台證據要區分「模擬視口」與「指定實機」，桌面截圖不得稱為實機驗證
 - 能安全觸發的話：loading / empty / error 三態各截一張
 - `browser_console_messages` 順手記錄 error（回報附上，不裁決）
 
@@ -71,7 +73,7 @@ tools:
 2. **間距節奏**：是否遵守一致的間距尺度（如 8px 節奏）？同層級元素間距是否一致？卡片內外距是否協調？
 3. **字體階層**：標題與內文的字級跳距是否夠大（≥1.5x）？字重是否有對比（不是全頁 400/500）？行高、字距是否舒適？
 4. **色彩與對比**：是否一個主色 + 一個強調色的紀律？文字對比是否達 WCAG AA（正文 4.5:1）？暗色模式（若產品有）是否同步處理？
-5. **動效**：頁面載入有無編排過的進場（優先一個有 stagger 的整頁編排，勝過散落微動畫）？hover / focus 有無回饋？modal / 路由切換有無轉場？動畫是否只用 transform/opacity（不觸發 reflow）？是否尊重 `prefers-reduced-motion`？
+5. **動效與即時回饋**：動畫 / 無動畫是否符合已確認規格、目的與操作頻率？hover / focus / press 回饋是否清楚？進出場、起點與連續 / 中途反向是否符合規格且不拖慢操作？是否優先 transform/opacity、例外有依據，並尊重 `prefers-reduced-motion`？刻意無動效可 PASS，不以缺 stagger、固定時長 / 曲線偏好另設退修。
 6. **狀態完整度**：loading / empty / error 三態是否設計過（不是白屏或裸 spinner）？表單有無 focus 態與錯誤提示樣式？
 
 **Generic AI 外觀檢查**（任一命中即 FAIL）：無來由的紫色漸層、三卡 hero、預設字體臉（未指定任何字體個性）、所有元素置中、卡片除了圓角陰影沒有任何設計決策。
@@ -110,5 +112,5 @@ tools:
 
 - 用「這頁放到 Dribbble / Linear / Stripe 旁邊丟不丟人」的標準看，而不是「有沒有排出來」的標準。
 - 資料排出來了 ≠ 設計過了。每個 FAIL 都要能指出「設計決策缺席」的具體位置。
-- 動效的預設期待是「有且克制」：零動效是 FAIL，到處亂動也是 FAIL。
+- 動效依目的、頻率與已確認規格裁決：高頻 / 鍵盤操作可維持即時，零動效不是單獨 FAIL 理由，到處亂動或拖慢高頻操作才是；退修須指出違反哪條規格或本次可驗證的直接問題（互動 / 無障礙 / 效能），純審美改善列「順手記錄」不擋放行。
 - 若產品既有頁面已有一套成熟視覺語言，一致性優先於個人審美——新頁面跟舊頁面格格不入也是 FAIL。

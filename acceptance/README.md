@@ -8,6 +8,8 @@
 
 - 清單: `<YYYYMMDD>-<任務簡述>.md`（例: `20260703-visitor-reconnect-push.md`）
 - 證據: `<YYYYMMDD>-<任務簡述>/evidence/`（與清單同名的目錄；QA/PM 驗收時的截圖與 curl 輸出全存這裡）
+- **外部凍結規格模式**（協定 `EXTERNAL_SPEC_PROTOCOL.md`）：規格本體在 `~/.claude/specs/<product>/<spec_id>/v<ver>/SPEC.md`，**本目錄不得複製或改寫 SPEC**，只放 `<spec_id>/<run_id>/{local,dev}/` 證據與各環境一份 `evidence-index.json`；完成報告模板 `COMPLETION_REPORT_TEMPLATE.md`，產出寫回 `~/.claude/specs/.../runs/<run_id>/`。原生模式的清單與證據規約不受影響
+- **lane 分級**（試行；協定 `LANE_PROTOCOL.md`）：S 級免凍結清單，M / L 照本 README 規約
 
 ## 清單格式（每條三段式）
 
@@ -27,8 +29,18 @@
 
 - QA/PM 每驗一條，至少落地一個證據檔到 `evidence/`，檔名必含 `A<n>-` 段:
   - `qa-A1-重連補推畫面.png`、`qa-A1-messages-curl.txt`、`pm-A2-權限矩陣.png`
-- 主 Claude 放行前執行 `bash ~/.claude/scripts/verify-evidence.sh <清單檔>`：任一條目零證據 → 不放行
+- 主 Claude 放行前執行 `bash ~/.claude/scripts/verify-evidence.sh <清單檔>`：任一條目零證據 → 不放行（外部規格模式改用 `--spec <SPEC.md> --evidence-dir <run>/local|dev --expected-sha256 <state hash>`，多驗索引綁定、雙軌、dev 版本）
 - 通過腳本後，主 Claude 仍須**親自 Read 抽驗 1-2 張關鍵截圖**，核對畫面內容真的等於條目宣稱；抽驗不符 → 該輪驗收整批作廢重驗
+
+## 理解回述（清單頂部，凍結前必寫）
+
+```markdown
+## 理解回述
+- 我理解你要的: <一句>
+- 我假設的: <你沒說、我這樣猜的 1-3 條>
+- 我不會做的: <明確排除>
+- 具體例子: <做完後你在哪個畫面／哪道指令會看到什麼>
+```
 
 ## 任務憲章（大型 / 自主任務加在清單同檔，與清單一起凍結）
 
@@ -42,7 +54,7 @@
   - 規格模糊處照既有行為 1:1
   - <其他依任務補充>
 - 必問白名單: 不可逆刪資料 / 花錢 / 資安 / 碰 prod / 需求自相矛盾（只有這些准中斷）
-- 提問政策: 白名單外疑問寫 ~/.claude/state/<task>-questions.md，批次結束一併呈報
+- 提問政策: 白名單外疑問寫 ~/.claude/state/<task>-questions.md（只收需使用者決定的，每條四行：問題／我暫採／影響／選項；決策紀錄寫 handoff.md），批次結束一併呈報
 ```
 
 ## 凍結規則
@@ -59,6 +71,10 @@
 - 驗收清單 `.md`（任務目錄根層）**永久保留**，作為任務歷史
 - 「閒置」= 任務目錄內所有檔案的 mtime 都超過 7 天，且 state 檔不存在或狀態為 done；`awaiting_user` / `running` 中的任務證據絕不清
 - 調整保留天數: 在 `~/.claude/state/watchdog.conf` 設 `EVIDENCE_RETENTION_DAYS=<天數>`
+
+## 證據完整性鐵則
+
+- 已釘死（有 SHA256SUMS）的 `.data` 目錄若事後出現不符：保留 FAILED 列並另出說明檔，**不得改寫 SUMS、不得刪檔、不得原地重產**；要改就出新版目錄與新檔名，並在收據標明取代關係。改寫 SUMS 讓 `shasum -c` 全綠是「通過只是因為沒找到不符」的假綠（2026-09-28 實際任務中 reviewer 抓到）。
 
 > 註：本目錄在公開範本 repo 中只放本 README 當說明；實際任務清單寫在使用者本機的
 > `~/.claude/acceptance/`。

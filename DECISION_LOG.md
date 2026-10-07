@@ -10,11 +10,13 @@
 | 決策類型 | 存放位置 | 範例 |
 |---|---|---|
 | **產品相關決策**（綁某個 repo / 產品）| 該 repo 內 `docs/adr/`，**同時**在 `~/.claude/products/<product>.md` 加一行索引 | 「系統 X 改用 Go 重構」「派單改 weighted round-robin」「可見性語義翻轉」 |
-| **跨產品 / 個人工作流決策**（不屬任何單一產品）| `~/.claude/`（CLAUDE.md 或獨立檔）| 「GitHub 多帳號規則」「標準開發流程」 |
+| **跨產品 / 個人工作流決策**（不屬任何單一產品）| `~/.claude/`（CLAUDE.md 或獨立檔）| 「GitHub 多帳號規則」「標準開發流程」「DESIGN.md 觸發規則」 |
 
 判斷原則：**「這個決策換到別的專案還成立嗎？」** 成立 → 放 `~/.claude`；只對這個產品成立 → 放該 repo `docs/adr/`。
 
 ## 二、repo 內目錄結構
+
+每個產品 repo（多 repo 產品放在「規格與架構總目錄」那個 repo）：
 
 ```
 docs/

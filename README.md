@@ -15,9 +15,12 @@ claude-code-config/
 ├── CLAUDE.md                  # 全域開發規範（主 Claude 指令集）：編排協定 + 開發流程步驟 0~5
 ├── SETUP_GUIDE.md             # 一步步的安裝與設定指南
 ├── DECISION_LOG.md            # ADR 決策紀錄制度的單一真相來源
+├── DESIGN_FLOW.md             # 切版設計流程（DESIGN.md 觸發判準、token 映射規則；只在設計意圖任務讀）
 ├── settings.json              # Claude Code 設定檔（權限 / Stop hook / plugin）
 ├── mcp.json                   # MCP Server 配置
 ├── .gitignore                 # 排除對話/快取/機密
+├── githooks/
+│   └── pre-commit             # 擋明文機敏檔進 git、擋 SECRETS 改了沒重新加密（git config core.hooksPath githooks）
 ├── agents/                    # 自訂 Agent 定義
 │   ├── architect.md           # 架構師：三方案分析 + 實作
 │   ├── pm.md                  # 產品經理：規格驗收
@@ -31,15 +34,25 @@ claude-code-config/
 ├── scripts/                   # 流程用確定性腳本
 │   ├── verify-deploy.sh       # 事件驅動部署驗證：輪詢 version endpoint 確認新版本上線
 │   ├── pre-review.sh          # reviewer 前的確定性預檢（lint / go vet / Redis TTL 掃描）
-│   ├── verify-evidence.sh     # 驗收放行前的證據完整性檢查（每條 A<n> 至少一個證據檔）
+│   ├── verify-evidence.sh     # 驗收放行前的證據完整性檢查（每條 A<n> 至少一個證據檔；帶 --spec 轉外部規格模式）
+│   ├── verify-evidence-external.py # 外部規格模式證據 gate（evidence-index 綁定 hash / 雙軌 / dev 版本）
+│   ├── verify-external-spec.py # 外部凍結 SPEC 驗證器（狀態矩陣 / hash / 產品 / prod 確認，錯誤碼化）
+│   ├── spec-gate.sh           # 外部規格模式每個 gate 前的漂移檢查（SPEC_DRIFT 即停）
+│   ├── new-completion-report.py # 外部規格 run 的完成報告產生器（填 COMPLETION_REPORT_TEMPLATE）
+│   ├── pw-lock.sh             # Playwright MCP 瀏覽器互斥鎖（多個 QA / PM / design-reviewer 共用一個瀏覽器）
+│   ├── secrets-sync.sh        # （選用）SECRETS 跨機器同步：age 加密進 repo，明文永遠 gitignored
 │   ├── watchdog.sh            # 斷線看門狗核心（平台無關）：復活中斷任務、接續下一批
 │   ├── install-watchdog.sh    # 看門狗排程安裝器（launchd / cron / Windows 排程器）
 │   ├── codex-probe.sh         # （選用）Codex 呼喚前的可用性/額度探測（未裝 Codex 則永遠 exit 2 安全跳過）
 │   ├── collect-run-metrics.py # 任務級 run 遙測收集器（transcript 解析，零 token 開銷）
-│   ├── report-runs.py         # run 對照報表（按 config 版本分組看制度改動趨勢）
+│   ├── report-runs.py         # run 對照報表（按 config 版本分組看制度改動趨勢；--pilot 看 lane 試行對照）
+│   ├── retro-digest.py        # 複盤彙整：上次複盤後的 verdict / 新卡；--due 判斷是否該提議 /retro
 │   └── rate-run.py            # 使用者一行驗收評分寫回 run 記錄
 ├── acceptance/                # 凍結驗收清單 + 驗收證據（步驟 0 產生，PM 驗收唯一依據）
-│   └── README.md              # 三段式清單格式 / 證據規約 / 任務憲章格式 / 凍結規則
+│   ├── README.md              # 三段式清單格式 / 理解回述 / 證據規約 / 任務憲章格式 / 凍結規則
+│   ├── LANE_PROTOCOL.md       # lane 分級（S / M / L）試行協定：各級流程、共同規則、state 追加欄位
+│   ├── EXTERNAL_SPEC_PROTOCOL.md # 外部凍結規格模式（入口 B）完整程序
+│   └── COMPLETION_REPORT_TEMPLATE.md # 外部規格 run 的完成報告模板
 ├── state/                     # 任務檢查點與看門狗（斷線自我恢復 + 跨 session 接續）
 │   ├── README.md              # 檢查點檔格式與 status 語義
 │   └── watchdog.conf          # 看門狗參數（心跳門檻 / 重啟上限 / 權限旗標）
@@ -50,9 +63,13 @@ claude-code-config/
 │       └── PLAYBOOK_TEMPLATE.md   # Playbook 結構範本
 ├── products/                  # 產品配置（PM/QA 用，含各產品「部署驗證」章節）
 │   ├── INDEX.md               # 產品索引
+│   ├── HOSTS.md               # 遠端主機登記表範本（SSH 別名 / IP / 連線方式，密碼只指向 SECRETS）
 │   └── example_product.md     # 範例產品配置
 └── skills/                    # 自訂 Skill
-    ├── dev/                   # /dev 一鍵自主開發管線（五步驟入口）
+    ├── dev/                   # /dev 一鍵自主開發管線（五步驟入口；--spec 走外部規格模式）
+    ├── discover/              # /discover 模糊大需求的結構化需求訪談
+    ├── retro/                 # /retro 宏觀自我複盤（提案制，使用者圈選才改規則）
+    ├── spec-check/            # /spec-check 外部 SPEC 凍結前的技術可行性檢查（唯讀）
     ├── merge-prod/            # 合併正式站
     ├── test-line-message-integrity/   # LINE 訊息完整性壓測
     ├── test-web-message-integrity/    # Web 訊息完整性壓測
@@ -80,6 +97,8 @@ claude-code-config/
 → ② 本地 QA + PM 驗收 → ③ push 觸發部署 → ④ 部署驗證 + 線上 QA → ⑤ 回報
 ```
 
+開工前先**定 lane**（S / M / L，試行中）：S 是一句話能描述的小改，免 reviewer / PM / 清單；M、L 走完整步驟，L（migration / 權限 / 付費 / 對外暴露面 / prod 資料）再加憲章、線上唯讀預檢與反方 PM。見「2.5 lane 分級」。
+
 主 Claude 不直接改 code，而是把需求、上下文、約束打包交給對應 agent。architect 實作時，**code + 規格書更新 + （必要時）ADR / 知識卡放在同一個 commit**。
 
 四個確定性關卡讓流程更穩：**步驟 0 凍結驗收清單**（破除「architect 自己出題自己改考卷」的循環依賴，PM 驗收以凍結清單為唯一依據；每條三段式「行為 + 驗證步驟 + 預期結果」，驗法凍結時就定案）、**pre-review 腳本**（lint / go vet / Redis TTL 等可規則化的錯誤在 reviewer 前攔截，不佔 reviewer 回合）、**證據落地 gate**（見下方「反假驗收三層 gate」）、**事件驅動部署驗證**（`verify-deploy.sh` 輪詢 version endpoint 確認新版本上線才放行 QA，取代固定等 5 分鐘；未設定 version endpoint 的產品自動沿用舊行為）。
@@ -102,13 +121,29 @@ QA/PM 說「通過」不算數，要能被確定性驗證：
 
 ### 2.3 檢查點與看門狗（斷線自我恢復）
 
-走五步驟的任務都維護檢查點檔 `state/<任務slug>.json`（current_step / next_action / status / 心跳），每個 gate 轉換更新一次。`scripts/watchdog.sh` 由排程器每 10 分鐘喚醒（`install-watchdog.sh` 依平台注入 launchd / cron / Windows 工作排程器）：`running` 且心跳逾期且 transcript 沒在動 → `claude --resume` 復活（上限 3 次，transcript mtime 活性判定防誤殺長工具呼叫）；`awaiting_user` 一律不動；`done` 過期自動清理。
+走五步驟的任務都維護檢查點檔 `state/<任務slug>.json`（current_step / next_action / status / 心跳），每個 gate 轉換更新一次。`scripts/watchdog.sh` 由排程器每 10 分鐘喚醒（`install-watchdog.sh` 依平台注入 launchd / cron / Windows 工作排程器）：`running` 且心跳逾期且 transcript 沒在動 → `claude --resume` 復活（上限 3 次，transcript mtime 活性判定防誤殺長工具呼叫）；`awaiting_user`（要使用者拍板）與 `reported`（做完等指令）一律不動；`done` 過期自動歸檔；任何狀態閒置超過 `IDLE_ARCHIVE_DAYS`（預設 14 天）搬到 `state/archive/`。復活時帶 state 記錄的 `config_dir`（`CLAUDE_CONFIG_DIR`），多 profile 環境也回到同一個 profile。
 
 > ⚠️ **安全警示（--dangerously-skip-permissions）**：看門狗預設以 `--dangerously-skip-permissions` 無頭復活 session——復活絕不會卡在權限提示，但代價是**該 session 在無人監督下擁有完整權限**（可執行任意指令、改任意檔案、對外連線）。這是為「全自主開發」情境做的取捨，套用前請確認你接受此風險；若在共用機器、含敏感資料的環境，或你不完全信任任務內容，請在 `state/watchdog.conf` 改為 `PERMISSION_FLAGS=""`（保守模式：復活 session 碰到未在 `settings.json` `permissions.allow` 白名單的工具會停下等人）。
 
 ### 2.4 大型任務切批（批次 = Session）
 
 大改動可分解為多批時，步驟 0 就切批寫進驗收清單。每批結束寫交接檔 `state/<task>-handoff.md`（完成內容、commit hash、下一批輸入、地雷），state 標 `awaiting_next_batch` 後結束本 session；看門狗自動開**新 session** 接續下一批——新 process = 乾淨 context，資訊靠交接檔 + 檢查點無損傳遞，從根本上控制 context 膨脹。
+
+### 2.5 lane 分級（試行）
+
+每個改 code 任務開工前定級，使用者沒指定就問一次（自主模式也問，這是唯一停點）：
+
+| lane | 判準 | 流程 |
+|---|---|---|
+| S | 一句話能描述 diff；不碰資料結構、權限／認證、付費、對外暴露面、prod 資料 | architect → build → push → 部署後親自點一次；免 reviewer / PM / 清單 |
+| M | 多檔改動或有行為變化，但不碰 L 的五項 | Explore 盤點 → 清單 → architect → pre-review → reviewer 一輪 → 相關測試一次 → push → 10 分鐘線上檢查 |
+| L | 含 migration、權限／認證、付費、對外暴露面、prod 資料任一 | M 全套 ＋ 憲章 ＋ 線上唯讀預檢 ＋ 反方 PM |
+
+state 多記 `lane` / `estimated_minutes` / `gate_reruns` / `live_regressions`，收尾由 `collect-run-metrics.py` 自動算 `self_verdict`；試行期滿用 `report-runs.py --pilot` 對照歷史基線決定轉正或回退。全文見 `acceptance/LANE_PROTOCOL.md`。
+
+### 2.6 外部凍結規格模式（入口 B）
+
+當規格由外部治理者寫好並凍結（`~/.claude/specs/<product>/<spec_id>/v<ver>/SPEC.md` ＋ `manifest.json`），用 `/dev [auto] --spec <SPEC.md>` 開工：步驟 0 不再由 PM 產清單，改由 `verify-external-spec.py` 驗 status / hash / 產品，PM 只做可測試性稽核；每個 gate 前跑 `spec-gate.sh` 擋 SPEC 漂移；證據每環境一份 `evidence-index.json`；收尾產完成報告寫回規格目錄。任何 agent 不得改 SPEC，要動規格只能輸出 `SPEC_CHANGE_REQUIRED` 交使用者決定。規格凍結前可先跑 `/spec-check` 做唯讀可行性檢查。全文見 `acceptance/EXTERNAL_SPEC_PROTOCOL.md`。
 
 ### 3. Agent 分工
 
@@ -163,6 +198,7 @@ Skill 是可重複使用的自動化腳本，用自然語言觸發：
 - `/test-web-message-integrity`：Web WebSocket 版的訊息完整性壓測
 - `/verify-ocr-version`：給出一組指令驗證線上 sidecar 是否部署到最新版
 - `/retro`：**宏觀自我複盤**——讀上次複盤後累積的 run verdict 與新增知識卡，找「跨 ≥2 個任務重複出現的流程反模式」，產出改 harness 的提案給使用者圈選；分析全自動、改動人審，絕不擅自改規則（見「Run 遙測與複盤迴圈」節）
+- `/spec-check`：**外部規格技術可行性檢查（唯讀）**——規格凍結前（DRAFT）或凍結後稽核（FROZEN），從 repo / 產品配置 / 知識庫逐條檢查驗收條件可行性、隱藏影響與規格衝突，輸出固定格式報告；不改 code、不改 SPEC
 - `/discover`：**需求訪談**——模糊大需求（「幫我做一個航運APP」）進步驟 0 前先走七大面向結構化訪談（定位/核心流程/範圍/視覺/技術/整合/營運），一次 ≤4 題分階段、每題附選項＋白話後果＋推薦、「不知道」給預設值記入「幫你做的決定」，產出需求釐清書供 PM 凍結——避免凍結一個腦補出來的需求、做一版後反覆修改。自動偵測觸發（日常 bug fix / 小改絕不觸發）或手動呼叫
 
 ### 8. Hook 整合
@@ -185,11 +221,21 @@ Skill 是可重複使用的自動化腳本，用自然語言觸發：
 
 每筆五步驟任務結束時，主 Claude 跑 `collect-run-metrics.py` 落一筆 run 記錄到 `run-metrics/runs/`（token 分帳到 agent 類型、派遣次數、config commit 指紋、使用者 verdict 欄）。累積後用 `report-runs.py` 按 config 版本分組看趨勢——用數據回答「這次制度改動有讓 agent 更省、更順嗎？」。純本地 transcript 解析、零 token 開銷；注意 transcript 有清理週期，收集必須在任務結束當下。
 
-在此之上是一條**自我複盤迴圈**（loop engineering 的 hill-climbing 層，分析自動、改動人審）：大任務最終回報時主 Claude **主動問使用者一句任務評分**（①順暢 ②還行 ③有卡點，可補一句）寫回 verdict——被動等使用者自己評分的流程實測會零產出，主動問才有燃料；累積 ≥8 個 verdict 時順口問「要不要 /retro 複盤」，使用者點頭才跑。複盤由 `retro-digest.py` 確定性彙整（不存計數器、由 `.last-retro` 時間戳推導防漂移），找出跨任務重複的流程反模式後**只產提案**，使用者圈選才動 CLAUDE.md / playbook；每輪最多 3 條、允許空手而回，嚴禁為改而改。
+在此之上是一條**自我複盤迴圈**（loop engineering 的 hill-climbing 層，分析自動、改動人審）：大任務最終回報時主 Claude **主動問使用者一句任務評分**（①順暢 ②還行 ③有卡點，可補一句）寫回 verdict——被動等使用者自己評分的流程實測會零產出，主動問才有燃料；`retro-digest.py --due` 判斷到期（≥8 個評分、或 ≥10 筆 run、或距上次 ≥14 天，任一成立；評分率低時靠後兩條兜底）就順口問「要不要 /retro 複盤」，使用者點頭才跑。複盤由 `retro-digest.py` 確定性彙整（不存計數器、由 `.last-retro` 時間戳推導防漂移），找出跨任務重複的流程反模式後**只產提案**，使用者圈選才動 CLAUDE.md / playbook；每輪最多 3 條、允許空手而回，嚴禁為改而改。
 
-### 12. Context 預算
+### 12. Context 預算與提問護欄
 
 CLAUDE.md 每個 session 全額載入。收納鐵則：「路由/護欄」才常駐、「程序細節」放外掛檔留指標；設大小保險絲、禁縮寫黑話、新增前先與使用者討論；memory 索引只留活躍項、收尾歸檔。詳見 CLAUDE.md「本檔 context 預算」節。
+
+要使用者做決定時遵守「提問護欄」：每個選項附白話後果、對流程／時程／費用的影響與推薦理由；問題附一個能想像的實例；一次最多 3 題，能自查的不問。凍結清單前另寫「理解回述」（我理解的／我假設的／我不會做的／一個具體例子），讓使用者只需回「對」或指出錯處。
+
+### 13. 機敏資料與跨機器同步（選用）
+
+帳密一律放 gitignored 的 `~/.claude/SECRETS.local.md`，其他檔只引用章節名。若 `~/.claude` 用 git 在多台機器間同步，可選用 `scripts/secrets-sync.sh`（age 公鑰加密）：明文不進 git、只同步 `secrets/*.age` 密文；`githooks/pre-commit` 擋明文機敏檔與「改了沒重新加密」。設定步驟見 SETUP_GUIDE。
+
+### 14. 多 agent 共用瀏覽器（pw-lock）
+
+本機多個 QA / PM / design-reviewer 共用同一個 Playwright MCP 瀏覽器，同時開會互相污染產生假失敗。`scripts/pw-lock.sh` 用 `mkdir` 原子鎖排隊（殘留鎖逾時以原子 rename 接管），第一個 browser 工具呼叫前 `acquire`、`browser_close` 後 `release`；純 API 測試不需鎖。
 
 ## 如何使用
 

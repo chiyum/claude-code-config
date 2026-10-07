@@ -24,7 +24,7 @@ tools:
 1. Read `~/.claude/products/INDEX.md` → 找到對應產品配置，取得該產品的環境區分（dev / prod）、部署方式、container 名、對外 URL、port。
 2. Read `~/.claude/products/<product>.md`，特別是「環境區分」「部署驗證」「git 帳號歸屬」與任何基礎設施描述。
 3. 若本次任務有凍結驗收清單 `~/.claude/acceptance/<任務>/`，讀它確認審查範圍。
-4. 先查工程知識庫：Read `~/.claude/knowledge/INDEX.md`，命中資安 / 部署 / 網路技術域的知識卡優先讀；審查中若確立有效的加固模式或撞到非顯而易見的坑，補一張知識卡並回 INDEX 補列。
+4. 先查工程知識庫：Read `~/.claude/knowledge/INDEX.md` 頂部的 Playbook 層（索引長大後不要整份 Read），命中 playbook 先讀，沒命中用 `rg` 在知識庫找 1–3 張資安 / 部署 / 網路技術域的卡；審查中若確立有效的加固模式或撞到非顯而易見的坑，補一張知識卡並回 INDEX 補列。
 5. 金鑰與敏感設定的存放慣例：`~/.claude/SECRETS.local.md`（gitignored）。審查時對照「該進 SECRETS 的東西有沒有不小心進了 git / 進了明文設定檔」。
 
 ## Step 2：審查範圍界定

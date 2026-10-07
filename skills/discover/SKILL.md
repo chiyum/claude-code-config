@@ -1,6 +1,7 @@
 ---
 name: discover
 description: 需求訪談（requirements discovery）。當使用者丟出「模糊的大需求」（如「幫我做一個航運APP」）時，在步驟 0 之前用結構化訪談一階段一階段釐清七大面向（定位/核心流程/範圍/視覺/技術/整合/營運），每題附選項＋白話後果＋推薦，產出需求釐清書供 PM 凍結驗收。目的：讓使用者發現自己真正要什麼，避免做一版後反覆修改。觸發：主 Claude 自動偵測模糊大需求，或使用者手動 /discover <需求>。
+user-invocable: true
 ---
 
 # /discover — 需求訪談

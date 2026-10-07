@@ -20,13 +20,14 @@ tools:
 - **設計原則**：DI / DIP / SRP（純工具函式可不強求）
 - **註解語言**：繁體中文，說明 why 而非 what
 - **commit message**：繁體中文
+- **UI 動效實作或修復**：若有動效規格檔（例如 `~/.claude/DESIGN_MOTION.md`）先讀它，按已確認的設計規格沿用產品元件、tokens、CSS / Vue，複雜動效才引入 GSAP 等動效函式庫；不因上游 React / Motion 範例換套件、不擴張成全 repo 動效盤點，無動效也是有效規格。凍結後覺得動效決策不適合，照憲章 / 必問白名單規則處理，不自行刪改已確認要求
 
 ## 必做：先查工程知識庫（成長系統）
 
 `~/.claude/knowledge/` 是一套跨專案、可複用的工程教訓 / 模式知識庫（由過往專案的真實事故累積而成）。**任何工作開始前，先做這件事：**
 
 1. 辨識本次任務涉及哪些**技術**與**問題類別**。
-2. Read `~/.claude/knowledge/INDEX.md`：**先讀命中技術域的 playbook**（`playbooks/` 層——把該技術域所有事故卡蒸餾成的設計決策流程與檢查清單，一次 Read 拿到整套框架），需要事故細節再深入個別知識卡。
+2. Read `~/.claude/knowledge/INDEX.md` 頂部的 Playbook 層：**先讀命中技術域的 playbook**（`playbooks/` 層——把該技術域所有事故卡蒸餾成的設計決策流程與檢查清單，一次 Read 拿到整套框架），需要事故細節再深入個別知識卡；沒命中就 `rg` 找 1–3 張卡。索引長大後**不要整份 Read**（見下方「讀檔紀律」）。
 3. 設計方案 / 寫 code 時，把命中卡的「對策」與「適用 / 不適用」納入考量，別重踩前人踩過的坑。
 4. 三方案分析時，若知識庫有相關卡，要在方案的「潛在風險」段引用它。
 
@@ -38,7 +39,15 @@ tools:
 - **同步更新 playbook**：若新卡屬於某個已有 playbook 的技術域（`~/.claude/knowledge/playbooks/`），同一 commit 內在該 playbook 的「必過檢查清單」或「已知坑速查」補一列並連回新卡；沒有對應 playbook 才只補 INDEX。
 - 程式碼參考要有 `檔案:行號`；`source` 填產品代號；`status` 線上實證填 `validated`、推論填 `proposed`。
 - 這張卡跟 code + 規格 + ADR 一樣，放在**同一個 commit**。
+- 補卡前先 `rg` 同 problem-class＋tech 的既有卡，命中就併入該卡，沒命中才新增。
 - 判斷門檻：「半年後有人碰到同類技術問題，這張卡能幫他少踩一次坑嗎？」會 → 寫。
+
+## 讀檔紀律（省 token，先看再讀）
+
+- 知識庫索引長大後（例如超過 30KB）**不得整份 Read `INDEX.md`**；只讀頂部 Playbook 層，沒命中 playbook 時用 `rg -n '<技術|問題類別>' ~/.claude/knowledge/INDEX.md ~/.claude/knowledge/*.md` 找 1–3 張卡
+- 產品配置 `~/.claude/products/<product>.md` 超過 15KB 時，先 `grep -n '^## '` 列標題，只 Read 用得到的區塊（規格書與文件／測試環境／規約／部署驗證），不整份載入
+- playbook 超過 30KB 時同樣先看標題，讀「必過檢查清單」與命中的段落即可
+- **Bash 的 `rm` 路徑不得出現裸變數**（如 `rm -f $DD/$n.txt`、`rm -rf $DIR/*`）：Claude Code 內建安全檢查會攔下並無限等待，且此檢查不受 bypass 權限模式影響。一律寫成 `rm -f "${DD:?}/${n:?}.txt"`（變數為空時 shell 直接中止）或用字面路徑；就算同一行前面已賦值也照樣會被攔，因為檢查只做靜態文字比對
 
 ## Step 0：判斷任務複雜度
 
@@ -159,6 +168,7 @@ triage 出的「小改 / 大改」分類，除了決定你走模式 A / B，也�
 2. 嚴格遵守使用者 CLAUDE.md 規範（命名 / 註解 / 分層 / DI 原則）
 3. 每完成一個邏輯單元就 self-check：是否遵守原方案？是否引入未預期的依賴？
 4. 跑 lint / build 確認過得了：`npx eslint <files>` 或 `yarn build`
+   - **外部規格模式**（prompt 標「外部規格模式 run」）：prompt 附的 `~/.claude/specs/.../SPEC.md` 是凍結的產品規格，**絕對不得修改**；你更新的是 repo 內技術規格 / API 文件 / ADR（另一層文件）。不實作非目標、不追加範圍外功能；發現規格衝突就停手回報 `SPEC_CHANGE_REQUIRED` 素材（含約束內解法嘗試證據）；commit 末尾加 `Spec-ID / Spec-Version / Spec-SHA256 / Acceptance` trailer；回報附「實作決策」清單。細則見 `~/.claude/acceptance/EXTERNAL_SPEC_PROTOCOL.md` 第 8 節。
 5. **同步更新規格書**（強制，與 code 同一 commit）：
    - 讀取 `~/.claude/products/<product>.md` 的「規格書與文件」區塊，找出該產品所有規格檔路徑
    - 對照本次 code 變更，逐一檢視每份規格檔是否需要更新（新增章節 / 改章節 / 刪章節）

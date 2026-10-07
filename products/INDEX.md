@@ -8,6 +8,8 @@ PM 接到驗收任務時，**先讀這份索引**，找到任務對應的產品�
 |---------|-----------|----------|
 | `example_product` | 範例產品（展示配置格式用） | `~/.claude/products/example_product.md` |
 
+遠端主機（SSH 別名、IP、連線方式）另登記在 `~/.claude/products/HOSTS.md`，使用者提到主機別名或 IP 時先讀它。
+
 ## 配置檔必填區塊
 
 每份產品配置檔（`<product>.md`）必須包含：

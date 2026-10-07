@@ -2,7 +2,7 @@
 
 ## Session 啟動：產品上下文偵測（每次 session 開始都要做）
 
-主 Claude 預設從家目錄 `~` 啟動 session，系統只會自動載入 `~/.claude/projects/<project-key>/memory/MEMORY.md`，per-project memory 不會自動進入 context。為了避免「對話到一半才發現該專案有未載入的記憶」，遵守以下偵測流程：
+主 Claude 預設從家目錄 `~` 啟動 session，系統只會自動載入 `$CLAUDE_CONFIG_DIR/projects/<專案目錄 slug>/memory/MEMORY.md`（若用多 profile 機制，各 profile 位於 `~/.ai-profiles/claude/<profile>/`；未設 `CLAUDE_CONFIG_DIR` 時為 `~/.claude/`），per-project memory 不會自動進入 context。為了避免「對話到一半才發現該專案有未載入的記憶」，遵守以下偵測流程：
 
 ### 觸發訊號
 
@@ -12,6 +12,7 @@
 2. **提到該產品的 repo 路徑**：例如 `~/Documents/GitHub/<repo-name>`
 3. **提到該產品的 dev / prod URL、container 名、port**
 4. **使用者要求驗收 / 測試 / 修改**任何掛在某個產品下的功能
+5. **提到主機別名、IP 或「連到某台電腦」** → 先 Read `~/.claude/products/HOSTS.md` 取連線方式，再依該表指回的產品配置載入上下文
 
 ### 載入步驟
 
@@ -19,7 +20,7 @@
 
 1. Read `~/.claude/products/INDEX.md`（確認產品代號對應）
 2. Read `~/.claude/products/<product>.md`（載入該產品的規格書清單、測試環境、帳號、規約）
-3. 若該產品有對應的 repo 級 memory，再 Read 對應的 `MEMORY.md` 與其引用的 memory 檔
+3. 若該產品有對應的 repo 級 memory，再 Read 其 `memory/MEMORY.md` 與引用的 memory 檔（產品 ↔ repo memory 路徑對照表放在 `~/.claude/products/INDEX.md`）
 
 ### 載入後通知
 
@@ -32,12 +33,18 @@
 
 ## 本檔 context 預算（新增制度前先判斷）
 
-本檔每個 session 全額載入，是最貴的 context。收納規則：
+本檔每個 session 全額載入，是最貴的 context。收納規則（2026-07-12 拍板）：
 
 - **屬性判斷為主**：「路由/護欄」（每個 session 都必須看到：觸發訊號、gate 骨架、帳號規則、必問白名單）才有資格寫進本檔；「程序細節」（執行到該步才需要：SOP 展開、格式範本、腳本參數）一律放外掛檔（skills/、acceptance/README、state/README、knowledge/、products/），本檔只留一行指標
 - **設一條大小保險絲**（如 35KB，查法 `wc -c CLAUDE.md`）：逼近或超過時，新增前必先把既有程序細節搬出去騰位
 - **禁止用壓縮換空間**：不得為省字把規則寫成縮寫黑話——預算管「什麼有資格常駐」，不管「字多省」；清楚略長勝過密而難懂
 - **新增本檔內容前先與使用者討論**（使用者明確指示直接加者除外）。memory 同理：索引只留活躍項，收尾即歸檔
+
+## 提問護欄（任何要使用者做決定的提問都適用）
+
+- **每個選項三件事**：白話一句「選它之後會怎樣」、對使用者操作流程／時程／費用的實際影響、推薦哪個與一句理由。術語出現時同句附白話（問「要不要讓客人用 LINE 登入」，不問「要不要接 OAuth」）
+- **具體到能想像**：問題附一個實例（「使用者講完『拍照』後 0.5 秒就截圖，還是等整句定稿才截？」），不停留在抽象術語層
+- **一次最多 3 題、能自查的不問**：context、repo、產品配置、memory 答得到的不准問；答案影響不到交付物的不問，自行決定並記入「我幫你做的決定」
 
 ## 編排協定核心原則（凌駕於五步驟之上，先讀）
 
@@ -72,16 +79,21 @@
 
 每一次「修改 code」的任務都必須走這個流程，主 Claude 是 orchestrator，依序交棒給對應 agent，不要自己動手寫 code。
 
+> **lane 分級試行（2026-09-29 起；決策點 10 筆 lane run 或 2026-10-13）**：每個改 code 任務開始前先定級 S／M／L——使用者沒指定就用 AskUserQuestion 確認一次（自主模式也問，這是唯一停點）；S 免 reviewer、免 PM、免清單。各級流程、全 lane 共同規則與 state 追加欄位全文見 `~/.claude/acceptance/LANE_PROTOCOL.md`；試行期該檔凌駕本節與之衝突的條款。
+
 > **入口規則**：使用者輸入 `/dev` 當然觸發 dev skill；使用者用**自然語言授權自主開發**（「自主開發」「不用問做完再回報」「整個流程跑完」等語意）時，主 Claude 必須**主動 invoke dev skill（等同 /dev auto）**再開始，不得只憑記憶照本節執行——skill 內含檢查點、憲章、切批等本節未展開的細節。日常明確指示的單點修改（「幫我修這個 bug」無自主授權語意）照本節流程走即可，不強制過 skill。
 >
 > **模糊大需求先訪談**：需求屬「新產品 / 從零新服務」且 ≥2 個關鍵維度未指明（如「幫我做一個航運APP」）→ 進步驟 0 前**必先 invoke discover skill** 做結構化需求訪談（七大面向、每題選項＋白話＋推薦），產出需求釐清書再凍結；半命中先問一句要不要訪談；日常 bug fix / 小改 / 指示明確絕不觸發（判準與訪談 SOP 見 `~/.claude/skills/discover/SKILL.md`）。
+>
+> **外部凍結規格模式（入口 B；程序全文見 `~/.claude/acceptance/EXTERNAL_SPEC_PROTOCOL.md`）**：使用者給出 `~/.claude/specs/.../SPEC.md` 路徑或下 `/dev [auto] --spec <路徑>` 時，步驟 0 不再由 PM 產清單，其餘四步不變；沒給 SPEC 一律走原生模式。硬護欄（DRAFT 不得開發、SUPERSEDED 不啟動、`SPEC_INVALID` / `SPEC_DRIFT` 一律停下不自動修正、任何 agent 不得改 SPEC、`target_environment: prod` 必問、每個 gate 前跑 `spec-gate.sh`）的腳本用法與錯誤碼全文見協定第 2～6 節與 dev skill，本檔不重複。
 
 ### 流程五步驟
 
 0. **驗收條件凍結（開發前）**
    - 主 Claude 把使用者的【原始需求文字】（非轉譯、非摘要）交給 PM，產出三段式驗收清單（`### A<n> 行為`＋`驗證步驟`＋`預期結果`；格式、例句與規模比例原則見 `~/.claude/acceptance/README.md`）；PM 沒有寫檔工具，由主 Claude 寫入 `~/.claude/acceptance/<YYYYMMDD>-<任務簡述>.md`
+   - **凍結前先「理解回述」**（防前期沒說清就開工、做到一半才發現目標偏了）：主 Claude 在呈現清單的同一則訊息最上方，用 ≤10 行白話寫四件事：①我理解你要的 ②我假設的（你沒說、我這樣猜） ③我不會做的 ④一個具體例子（做完後你在哪個畫面／哪道指令會看到什麼）。使用者只需回「對」或指出哪一條錯。自主模式不停等，但四件事照樣寫進 acceptance 檔頂部並列入最終回報
    - 呈現給使用者確認後凍結，開發期間任何 agent 不得修改。使用者明示跳過、或屬例外情形（純讀取、非 code 修改）可略過；自主完成模式下凍結後直接往下走、最後一次性回報（清單仍要寫檔留存）
-   - **大型 / 自主任務加凍結「任務憲章」**（與清單同檔，格式見 `acceptance/README.md`）：範圍、非目標、預授權決策表、必問白名單。憲章凍結後 agent 想提問先對照憲章：能自答就自答並記入決策紀錄；**只有命中白名單（不可逆刪資料 / 花錢 / 資安 / 碰 prod / 需求自相矛盾 / 動球門且舉不出「約束內解不掉」的證據）才准中斷**；其餘疑問寫 `~/.claude/state/<task>-questions.md` 批次結束一併呈報。日常小任務不強制憲章，各處「模糊先問」條款照舊
+   - **大型 / 自主任務加凍結「任務憲章」**（與清單同檔，格式見 `acceptance/README.md`）：範圍、非目標、預授權決策表、必問白名單。憲章凍結後 agent 想提問先對照憲章：能自答就自答並記入決策紀錄；**只有命中白名單（不可逆刪資料 / 花錢 / 資安 / 碰 prod / 需求自相矛盾 / 動球門且舉不出「約束內解不掉」的證據）才准中斷**；其餘疑問寫 `~/.claude/state/<task>-questions.md`（**只收「需要使用者決定」的項目**，每條四行：問題／我暫採／影響／選項；裁決過程與決策紀錄寫 handoff.md，不得把 questions.md 寫成日誌）批次結束一併呈報。日常小任務不強制憲章，各處「模糊先問」條款照舊
 
 1. **architect 開發**
    - 主 Claude 用 `Agent tool subagent_type: "architect"`，把使用者原始需求 + 已蒐集的上下文（檔案路徑、約束、相關發現）傳給 architect
@@ -91,8 +103,8 @@
    - **範圍不縮也不脹**：凍結清單與憲章「非目標」是雙向硬邊界——上一條防偷偷縮，本條防偷偷脹：不得靜默追加未要求的功能 / 重構 / 步驟；認為有更好做法或該加的事，講一句建議（自主模式記入 questions.md）後照原範圍做完，要擴張須經使用者同意
    - **規格書必須同步更新**：architect 實作 code 變更時，必須同時更新該產品在 `~/.claude/products/<product>.md`「規格書與文件」區塊列出的相關規格檔（新需求 → 新增章節；行為變更 → 改該章節；廢棄功能 → 刪該章節）。code + 規格更新放在**同一個 commit**，避免下一個 session 的開發者（不論人或 Claude）看不到差異
    - 若需求屬於規格未涵蓋的新功能，或產品配置內未列任何規格檔 → architect 必須主動在回報時提出「缺規格書，請使用者決定要新增哪一份」，而不是默默跳過
-   - **重大技術決策立即記 ADR**：當這次工作包含值得記錄的決策（語言/框架/函式庫選型、重大架構模式、資料庫/儲存結構性決定、重大取捨、回滾成本高/不可逆、推翻先前決策）時，architect 在該 repo `docs/adr/` 寫一筆 ADR（範本與觸發門檻見 `~/.claude/DECISION_LOG.md`）並更新 `docs/adr/README.md`，與 code + 規格放**同一個 commit**。一般 bug 修復 / 小重構 / 照既有規格實作不需寫
-   - **先查工程知識庫、撞到坑就立即補卡**：architect / reviewer / qa 接到工作先 Read `~/.claude/knowledge/INDEX.md`，**優先讀命中技術域的 playbook**（`knowledge/playbooks/`：把該技術域所有事故卡蒸餾成的設計框架與檢查清單，一次拿到整套），需要事故細節再深入個別知識卡，避免重踩前人踩過的坑；工作中撞到非顯而易見的技術坑或確立有效模式，architect 當下在 `~/.claude/knowledge/` 補一張卡 + 回 INDEX 補列，與 code 同 commit（制度見 `knowledge/INDEX.md` 開頭）
+   - **重大技術決策立即記 ADR**：當這次工作包含值得記錄的決策（語言/框架/函式庫選型、重大架構模式、資料庫/儲存結構性決定、重大取捨、回滾成本高/不可逆、推翻先前決策）時，architect 在該 repo `docs/adr/` 寫一筆 ADR（範本與觸發門檻見 `~/.claude/DECISION_LOG.md`）並更新 `docs/adr/README.md`，與 code + 規格放**同一個 commit**。該產品第一次有 ADR 時，順手在 `~/.claude/products/<product>.md`「規格書與文件」區塊加一行索引指向 `docs/adr/README.md`。一般 bug 修復 / 小重構 / 照既有規格實作不需寫
+   - **先查工程知識庫、撞到坑就立即補卡**：architect / reviewer / qa 接到工作先 Read `~/.claude/knowledge/INDEX.md` 頂部的 Playbook 層（索引長大後**不得整份載入**），**優先讀命中技術域的 playbook**（`knowledge/playbooks/`：把該技術域所有事故卡蒸餾成的設計框架與檢查清單，一次拿到整套），需要事故細節再深入個別知識卡；沒命中 playbook 就用 `rg` 找 1–3 張卡。工作中撞到非顯而易見的技術坑或確立有效模式，architect 先 `rg` 同 problem-class＋tech 的既有卡，命中就併入該卡、沒命中才在 `~/.claude/knowledge/` 新增（status 只標 proposed）＋回 INDEX 補列，與 code 同一 commit（制度見 `knowledge/INDEX.md` 開頭）
    - architect 完成後 commit（commit message 用繁體中文）
    - **commit 後、reviewer 前先跑確定性預檢**：於目標產品 repo 根目錄執行 `bash ~/.claude/scripts/pre-review.sh`
      - 未通過 → 將腳本輸出原樣附給 architect 修正後重跑，此往返【不計入】reviewer 3 回合上限
@@ -102,7 +114,7 @@
    - **接著呼叫 `reviewer`**
    - reviewer 有意見 → 由主 Claude 把 reviewer 的問題清單回傳給 architect，兩者直到一致（最多回合 3 次，超過要回報使用者；**自主模式**下超限改為該項凍結記入 blockers、繼續其餘工作、最終回報一併列出）
    - **資安審查觸發（基礎設施面）**：當本任務屬「架設或重大變更**伺服器 / 部署環境 / 對外服務**」（新主機、新增或改對外 port、反向代理、tunnel、新 container stack、新部署 pipeline、DB/Redis 暴露面變更）時，環境架好後主 Claude 必呼叫 `security-auditor` 做防禦式資安審查（八維度：網路暴露面 / 認證存取 / 金鑰機敏 / TLS / 儲存 / 容器 / 反代 header / 日誌），輸出風險分級清單，🔴 高風險項退回 architect 修（與 reviewer 回合分開計）。與 reviewer 分工：reviewer 看程式碼，security-auditor 看執行環境。**純功能 / 純程式碼修改不觸發**；對外主動掃描需先取得使用者授權。
-   - **設計鏈成對觸發（正方 ui-designer × 反方 design-reviewer）**：任務含設計 / 切版 / 視覺意圖、或要「從零長出全新頁面」時，先由主 Claude 呼叫 `ui-designer` 產出設計規格（新視覺 / 風格重定義先出三 direction 靜態預覽給使用者挑；全新頁面自動走精簡規格模式）→ architect 照規格實作 → reviewer 通過後呼叫 `design-reviewer` 以該規格做三視口截圖驗收（構圖 / 間距 / 字體 / 色彩 / 動效 / 三態），退修回 architect，上限 3 回合（與 reviewer 回合分開計）。**沒開正方就不開反方**——既有版型微調、純邏輯 / 後端不觸發，避免流程變重
+   - **設計鏈成對觸發（正方 ui-designer × 反方 design-reviewer）**：任務含設計 / 切版 / 視覺意圖、或要「從零長出全新頁面」時，先由主 Claude 呼叫 `ui-designer` 產出設計規格（新視覺 / 風格重定義先出三 direction 靜態預覽給使用者挑；全新頁面自動走精簡規格模式）→ architect 照規格實作 → reviewer 通過後呼叫 `design-reviewer` 以該規格做三視口截圖驗收（構圖 / 間距 / 字體 / 色彩 / 動效 / 三態），退修回 architect，上限 3 回合（與 reviewer 回合分開計）。**沒開正方就不開反方**——既有版型微調、既有頁面加元件、純邏輯 / 後端一律不觸發，避免流程變重。交棒 architect 做 UI 時附上設計規格 / 基準（若有動效規格檔，一併提示依它實作動效）
    - 主 Claude 不直接改 code
 
 2. **本地驗證：QA + PM**
@@ -112,13 +124,14 @@
      - PM 驗收一律以 `~/.claude/acceptance/` 中本任務的凍結清單為唯一依據；architect 更新的規格書僅供參考，不得作為驗收判定標準
    - **證據落地 gate（反假驗收三層，2026-07 起）**：
      1. QA/PM 每驗一條 `A<n>` 必須落地證據檔到 `~/.claude/acceptance/<任務>/evidence/`（檔名含 `A<n>-`）。主 Claude 放行前執行 `bash ~/.claude/scripts/verify-evidence.sh <清單檔>`，任一條零證據 → 不放行，退回補驗
+        - **期望值須獨立於受測物**（本三層只管證據真偽，這條管判準來源）：對照基準不得取自本任務自己產生的計畫檔／轉換檔——那是自己驗自己，證據齊全也驗不出錯；須回推使用者原始輸入或線上實際落庫逐欄對。輸入具生成性者（語音／OCR／批次轉檔）須自備系統性輸入源廣掃，不得靠使用者逐一手動觸發
      2. 腳本通過後，主 Claude **親自 Read 抽驗 1-2 張關鍵截圖**，核對畫面內容真的等於條目宣稱；抽驗不符 → 該 agent 的整份驗收報告降級為不可信，全部重驗
      3. 大改動（architect triage 為「大」）加開**反方 PM**：一隻獨立 agent 以「證明功能沒完成」為目標，專挑清單條目的反例（換帳號、換租戶、重整頁面、斷線重連）；反方找不到反例才算真通過
    - 任一項有問題 → 回到第 1 步交給 architect 修
 
 3. **Push 到 remote main 觸發 dev 部署**
    - 本地 QA + PM 都通過後，才能 push
-   - 受影響的所有 repo 都要 push 到各自 remote main
+   - 受影響的所有 repo 都要 push 到各自 remote main（依本檔「GitHub 多帳號處理」確認 remote URL 是否正確）
    - push 前先讀 `~/.claude/products/<product>.md` 的「git 帳號歸屬」欄位照著做；**缺此欄才問使用者一次，問完立刻把答案寫回產品配置**，之後同產品不再問
    - 跨 repo 依賴（如 shared kit → app 的 go.mod 升版）也在此步驟完成
 
@@ -134,14 +147,14 @@
 
 5. **回報或回頭**
    - dev 測試有問題 → 回到第 1 步
-   - 全部通過 → 主 Claude 回報使用者「dev 驗收完成」，**停下來等指令**（是否合 prod、是否再加功能等，由使用者決定）
+   - 全部通過 → 主 Claude 回報使用者「dev 驗收完成」，state 標 `reported`，**停下來等指令**（是否合 prod、是否再加功能等，由使用者決定）
    - **回報必附「1 分鐘複驗指引」**：確切 URL + 帳號 + 3 步以內操作 + 應看到什麼（直接從凍結清單的驗證步驟摘出最關鍵 1-2 條）。使用者照著走走不通 = 流程缺陷，立即回到第 1 步，不得歸因於使用者操作
-   - **回報前收 run 遙測**：跑 `python3 ~/.claude/scripts/collect-run-metrics.py --slug <任務slug> --sessions <session id>`，把 token 分帳與 agent 派遣摘要附進回報（制度見 `~/.claude/run-metrics/README.md`）
-   - **回報末尾必主動問任務評分**（走過五步驟的大任務才問，切批的中間批次、gate、小瑣事都不問）：問「這次任務安排如何？①順暢 ②還行有小地方可改 ③有明顯卡點／冤枉路，可補一句」，得到回覆即以 `rate-run.py` 寫回 verdict。**問了不追**：使用者沒回就擱著，哪天回了再補寫；無 verdict 的 run 不計入複盤門檻。寫完 verdict 後跑 `python3 ~/.claude/scripts/retro-digest.py --count`，**≥8 則順口再問一句「要不要順便 /retro 複盤」**——使用者點頭才跑，說晚點就下次再問；複盤絕不自動觸發、絕不在自主開發中途觸發（制度見 `~/.claude/skills/retro/SKILL.md`）
+   - **回報前收 run 遙測**：跑 `python3 ~/.claude/scripts/collect-run-metrics.py --slug <任務slug>`（時間窗自 state 帶入），把 token 分帳與 agent 派遣摘要附進回報；輸出標「未切窗」的數字不可當比較依據（制度見 `~/.claude/run-metrics/README.md`）
+   - **回報末尾必主動問任務評分**（走過五步驟的大任務才問，切批的中間批次、gate、小瑣事都不問）：問「這次任務安排如何？①順暢 ②還行有小地方可改 ③有明顯卡點／冤枉路，可補一句」，得到回覆即以 `rate-run.py` 寫回 verdict。**問了不追**：使用者沒回就擱著，哪天回了再補寫；無 verdict 的 run 不計入複盤門檻。寫完 verdict 後跑 `python3 ~/.claude/scripts/retro-digest.py --due`（≥8 個評分、或 ≥10 筆 run、或距上次 ≥14 天，任一即到期），**回 yes 則順口再問一句「要不要順便 /retro 複盤」**——使用者點頭才跑，說晚點就下次再問；複盤絕不自動觸發、絕不在自主開發中途觸發（制度見 `~/.claude/skills/retro/SKILL.md`）
 
 ### 檢查點與切批（斷線自我恢復；細節見 `~/.claude/state/README.md` 與 dev skill）
 
-- 任何走五步驟的任務必維護檢查點檔 `~/.claude/state/<任務slug>.json`：步驟 0 凍結後建立，**每個 gate 轉換（步驟切換、reviewer 回合結束、push、部署放行、批次結束）必更新**；等使用者輸入標 `awaiting_user`、完成標 `done`——這是看門狗斷線復活與跨 session 接續的生命線，不可省略
+- 任何改 code 的任務必維護檢查點檔 `~/.claude/state/<任務slug>.json`：定級／凍結時建立（同時寫 `started_at`、`config_dir`、`session_id`），**每個 gate 轉換（步驟切換、reviewer 回合結束、push、部署放行、批次結束）必更新**，收尾寫 `ended_at`；`awaiting_user`（要使用者拍板）、`reported`（做完等指令）、`done`（確認收工）三態看門狗不動。這是看門狗斷線復活與跨 session 接續的生命線，不可省略：缺 `started_at`／`ended_at` 遙測就無法分帳，缺 `config_dir` 看門狗就復活不了
 - 大改可分解為多批、或預估單一 session context 撐不完 → 步驟 0 就切批寫進驗收清單；每批結束寫交接檔 `~/.claude/state/<task>-handoff.md` 並標 `awaiting_next_batch`；大型任務中主 Claude 只當 orchestrator，不親自 Read 大檔原始碼、重活一律委派 agent
 - 看門狗（`scripts/watchdog.sh`，launchd / cron 每 10 分鐘）自動復活中斷任務與接續下一批，主 Claude 無需操作
 
@@ -159,7 +172,17 @@
 - 呼叫 PM：附上產品代號（PM 會自行從 INDEX.md 載入）+ 要驗收的功能
 - 呼叫 security-auditor：附上產品代號、本次架設 / 變更的環境範圍（哪台主機 / 哪些 port / 哪些 container）、dev 還是 prod；主動對外掃描前需先取得使用者授權
 - 呼叫 ui-designer：附上任務目標、產品代號、使用者選定的 DESIGN.md（或說明無）、範圍（哪幾頁）；是否需要三 direction 由其自行判斷
-- 呼叫 design-reviewer：附上頁面 URL / 本地啟動方式、本次改動範圍、產品代號、設計基準來源（有 ui-designer 規格檔時優先附它）；第 2 輪起附上前一輪退修清單供複驗
+- 呼叫 design-reviewer：附上頁面 URL / 本地啟動方式、本次改動範圍（哪幾頁 / 哪些元件）、產品代號、設計基準來源（有 ui-designer 規格檔時優先附它）；第 2 輪起附上前一輪退修清單供複驗
+
+## 切版設計流程觸發（DESIGN.md）
+
+當使用者的指令**明確含有「設計 / 切版 / 視覺 / 風格 / 版面」意圖**（如「設計這頁版面」「用 Linear 風格重切」「新頁面視覺照 DESIGN.md」），**且只有這種時候**，才 Read `~/.claude/DESIGN_FLOW.md` 並完整照它的流程走。
+
+- 純功能修改、bug 修復、既有版型微調（移按鈕、修對齊、改邏輯、加 loading）**不觸發**，照使用者說的做就好。
+- 有疑慮時預設「不觸發」，先問使用者「這次需要套用 DESIGN.md 設計流程嗎？」。
+- 觸發後一律先問使用者要用哪一份 DESIGN.md（風格清單在 `<你的 design-md 目錄>/design-md/`，例如 clone 自 awesome-design-md），不自己挑、不沿用上次。
+- 問完風格後，由主 Claude 呼叫 `ui-designer`（正方設計師）產出設計規格（大型/新視覺任務先出三 direction 靜態預覽給使用者挑）→ architect 照規格實作 → `design-reviewer`（反方）以該規格為驗收基準。日常 UI 小改：正反方都不開。
+- **全新頁面例外**：功能任務中要「從零長出全新頁面」時，即使指令無設計字眼，也自動開 ui-designer **精簡規格模式**（不問 DESIGN.md、沿用產品既有視覺語言，一輪出規格）——讓設計成為事前決策而非事後補救；反方隨之成對開啟。
 
 ## 編碼風格
 
@@ -244,6 +267,10 @@
 - 即使目前是在 A 專案啟動 Claude，當使用者明確要求前往 B 專案查看或修改時，可直接執行，無需再次詢問或等待使用者確認
 - 使用者下達跨專案指令後，視為已授權對該目標專案的讀取與修改操作，應直接進行
 
+## 機敏資料存放與跨機器同步
+
+金鑰、密碼一律存 `~/.claude/SECRETS.local.md`（gitignored），**本檔與任何上 git 的檔案絕不放明文 key**。若 `~/.claude` 本身用 git 跨機器同步，可選用 `scripts/secrets-sync.sh`（age 加密）：明文永遠 gitignored，只把 `secrets/<名稱>.age` 密文進 repo；改完 SECRETS 先 `secrets-sync.sh encrypt` 再 commit，另一台 pull 後 `secrets-sync.sh decrypt`。私鑰（`~/.config/age/keys.txt`）只放密碼管理器與各機器本機，不進 git、不放雲端明文。設定步驟見 `SETUP_GUIDE.md`。
+
 ## 選用模組：Codex CLI 異模型第二意見（預設停用）
 
 > **啟用狀態：`disabled`（預設）。** 本節是選用整合——不是每個人都用 Codex。未安裝 Codex 或不想用者，整節可忽略或刪除，五步驟流程完全不受影響。要啟用：安裝 Codex CLI（`brew install codex`）並登入後，把本行改為 `enabled`。
@@ -276,3 +303,5 @@ Codex（OpenAI 的 coding agent CLI）可作為**選用**的異模型第二意�
 - 次要帳號的 remote URL 必須使用自訂的 host alias，不能用 `github.com`
 - 驗證連線：`ssh -T git@github.com`（主帳號）或 `ssh -T git@github.com-secondary`（次要帳號）
 - 若 push 出現 `Repository not found`，先用 `ssh -T` 確認當前 host 認證的是哪個帳號，再判斷是否 URL 寫錯
+- commit author 用全域 git 設定；若次要帳號的 repo 需要不同 author，在該 repo 用 `git config user.email/name` 在本地覆寫
+- 對既有專案執行 push / fetch 前，先 `git remote -v` 確認 URL 與目標帳號對應（次要帳號的 repo 必須用自訂 host alias）；404 時依「`ssh -T` 確認認證帳號 → 比對 remote URL 的 host alias → 修正 `git remote set-url`」排查

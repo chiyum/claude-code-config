@@ -6,7 +6,7 @@
 # 說明:
 #   - 參數來自各產品 products/<product>.md 的「部署驗證」章節（version_url / jq_path / timeout / interval）
 #   - 多 repo 產品: expected_commit 應取「擁有此 version endpoint 的那個 repo」的 HEAD
-#     （例如客服系統以後端 go_chat_service 的 commit 為準），不要混用其他 repo 的 HEAD
+#     （例如以後端 API repo 的 commit 為準），不要混用其他 repo 的 HEAD
 
 VERSION_URL="$1"
 EXPECTED_COMMIT="$2"

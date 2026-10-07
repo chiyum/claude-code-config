@@ -1,6 +1,7 @@
 ---
 name: retro
 description: 宏觀自我複盤（L4 hill-climbing 的人審版）。讀取上次複盤後累積的 run verdict、新增知識卡與摩擦訊號，找出「跨 ≥2 個任務重複出現的流程反模式」，產出改 harness 的提案清單給使用者圈選；使用者拍板才動 CLAUDE.md / playbook。觸發：任務完成評分後累積 ≥8 個 verdict 時主 Claude 順口詢問，或使用者隨時手動 /retro。
+user-invocable: true
 ---
 
 # /retro — 宏觀自我複盤
@@ -53,6 +54,6 @@ python3 ~/.claude/scripts/retro-digest.py --mark   # 更新 .last-retro，重新
 
 ## 觸發方式（寫在 CLAUDE.md 第五步的護欄）
 
-- 大任務最終回報時，主 Claude 問完任務評分後跑 `retro-digest.py --count`，**≥8 就順口問一句**「要不要順便複盤」；使用者說好才跑，說晚點就擱著下次再問，不糾纏。
+- 大任務最終回報時，主 Claude 問完任務評分後跑 `retro-digest.py --due`（≥ 8 個評分、或 ≥ 10 筆 run、或距上次 ≥ 14 天，任一即到期），**回 yes 就順口問一句**「要不要順便複盤」；使用者說好才跑，說晚點就擱著下次再問，不糾纏。
 - 使用者任何時候手動 `/retro` 也可以，不受門檻限制。
 - **絕不自動觸發、絕不在自主開發中途觸發。**

@@ -11,16 +11,50 @@
 FAIL=0
 
 echo "=== [1/3] 靜態檢查 ==="
-if ls *.go >/dev/null 2>&1 || [ -f go.mod ]; then
-  go vet ./... || FAIL=1
-  if command -v golangci-lint >/dev/null 2>&1; then
-    golangci-lint run || FAIL=1
-  fi
+# Go 靜態檢查：以「找得到的每一個 go module」為單位，不假設 go.mod 在 repo 根目錄。
+#
+# 原本的條件是 `ls *.go || [ -f go.mod ]`，在 monorepo（go.mod 位於 services/api/）
+# 兩者皆不成立 → 整個 Go 區塊【靜默跳過】，於是「pre-review 通過」裡從來不含任何 Go 檢查。
+# 這是 guard-conditions-unmet-by-repo-layout-silently-skip 的形狀：前置條件不成立要講出來，
+# 不能當成通過。2026-09-11 於實際專案發現。
+GO_MODULES=$(find . -maxdepth 4 -name go.mod -not -path '*/node_modules/*' -not -path '*/vendor/*' -not -path '*/.git/*' 2>/dev/null | sort)
+if [ -n "${GO_MODULES}" ]; then
+  for gomod in ${GO_MODULES}; do
+    module_dir=$(dirname "${gomod}")
+    echo "--- go module: ${module_dir} ---"
+    (
+      cd "${module_dir}" || exit 1
+      go vet ./... || exit 1
+      # build tag 會讓整批檔案不在預設視野內：`go vet ./...` 看不到 //go:build <tag> 的檔案，
+      # 那些檔案即使編不起來這裡照樣全綠（實例：integration 檔相依未提交型別，
+      # pre-review 與工程品質 gate 全綠，直到在乾淨 checkout 上才現形）。
+      # 有幾個 tag 就跑幾次，新增 tag 自動涵蓋。
+      for build_tag in $(grep -rhoE '^//go:build [a-z_]+' --include='*.go' . 2>/dev/null | awk '{print $2}' | sort -u); do
+        echo "--- go vet -tags=${build_tag} (${module_dir}) ---"
+        go vet -tags="${build_tag}" ./... || exit 1
+      done
+      if command -v golangci-lint >/dev/null 2>&1; then
+        golangci-lint run || exit 1
+      fi
+    ) || FAIL=1
+  done
+elif find . -name '*.go' -not -path '*/vendor/*' -not -path '*/.git/*' -not -path '*/node_modules/*' -print -quit 2>/dev/null | grep -q .; then
+  # 有 .go 檔卻找不到 go.mod：不是「沒有 Go 要檢查」，是檢查涵蓋不到——要講出來，不可靜默通過
+  echo "⚠️ 偵測到 .go 檔但找不到 go.mod（4 層內），Go 靜態檢查未涵蓋；請確認 module 位置"
+  FAIL=1
 fi
 if [ -f package.json ]; then
   # 前端: 偵測到 eslint 設定才跑，且讓其 exit code 決定成敗（與 Go 一致，會擋）
+  # 排除 build 產物目錄：eslint flat config 預設只忽略 node_modules，不含 dist/build。
+  # 若 architect 事前跑過 yarn build，工作區會留下 dist（bundled/minified），
+  # 直接 eslint . 會去掃那包壓縮碼 → 極慢（曾實測 >10 分鐘）且對壓縮碼誤報 error，
+  # 使整關假失敗。故顯式忽略常見 build 輸出目錄。詳見知識卡 pre-review-eslint-ignore-build-output。
   if ls .eslintrc* eslint.config.* >/dev/null 2>&1 || grep -q '"eslintConfig"' package.json 2>/dev/null; then
-    npx --no-install eslint . || FAIL=1
+    npx --no-install eslint . \
+      --ignore-pattern 'dist/**' \
+      --ignore-pattern 'build/**' \
+      --ignore-pattern '.output/**' \
+      --ignore-pattern 'coverage/**' || FAIL=1
   fi
 fi
 
