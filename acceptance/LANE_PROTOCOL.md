@@ -31,6 +31,7 @@
 6. 不用 load<6 當 gate 硬門檻；只擋磁碟不足與「另一個 build 進行中」
 7. 跨 agent 對他人 commit 的描述，決策前先 `git show --stat` 核實
 8. 知識卡：補卡前先 `rg` 同 problem-class＋tech 的既有卡，命中就併入既有卡；agent 只能標 `status: proposed`，`validated` 由使用者或線上證據才能標
+9. 派出 agent 或背景長步驟（部署、e2e、切換）後，主 Claude 用 Monitor／until 迴圈自己盯產物（證據目錄、commit、log 的 PASS／FAIL 列），不只等完成通知；約 15–20 分鐘沒有新產物就用 SendMessage 問狀況；轉達裁決後要確認對方有回應；包裝腳本必須把工具的結束碼傳出來，不得恆為 0（2026-10-14 複盤拍板）
 
 ## 4. state 追加欄位
 

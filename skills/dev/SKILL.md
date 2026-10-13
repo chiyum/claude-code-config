@@ -69,7 +69,7 @@ user-invocable: true
 
 architect triage 為大改且可分解為多批 → 步驟 0 就切批寫進清單。每批結束：
 1. 寫 / 更新 `~/.claude/state/<slug>-handoff.md`（本批完成內容、commit hash、下一批輸入、地雷）
-2. state 標 `awaiting_next_batch`，回報本批結果後**結束本 session 的工作**
+2. state 標 `awaiting_next_batch`。**標準模式**回報本批結果後結束本 session 的工作；**auto 模式**只寫 handoff、不向使用者發回報或等指令，由看門狗／`/dev 繼續` 自動接下一批，全部批次完成才做一次性最終回報。批次間只有命中必問白名單才停
 3. 看門狗會自動開新 session 跑「/dev 繼續 <slug>」（新 process = 乾淨 context）；使用者也可手動下同一指令
 
 ## 最終回報（一次性，必含五件事）

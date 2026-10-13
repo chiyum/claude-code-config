@@ -50,7 +50,7 @@ claude-code-config/
 │   └── rate-run.py            # 使用者一行驗收評分寫回 run 記錄
 ├── acceptance/                # 凍結驗收清單 + 驗收證據（步驟 0 產生，PM 驗收唯一依據）
 │   ├── README.md              # 三段式清單格式 / 理解回述 / 證據規約 / 任務憲章格式 / 凍結規則
-│   ├── LANE_PROTOCOL.md       # lane 分級（S / M / L）試行協定：各級流程、共同規則、state 追加欄位
+│   ├── LANE_PROTOCOL.md       # lane 分級（S / M / L）試行協定：各級流程、共同規則（含派 agent 後盯活性）、state 追加欄位
 │   ├── EXTERNAL_SPEC_PROTOCOL.md # 外部凍結規格模式（入口 B）完整程序
 │   └── COMPLETION_REPORT_TEMPLATE.md # 外部規格 run 的完成報告模板
 ├── state/                     # 任務檢查點與看門狗（斷線自我恢復 + 跨 session 接續）
@@ -127,7 +127,7 @@ QA/PM 說「通過」不算數，要能被確定性驗證：
 
 ### 2.4 大型任務切批（批次 = Session）
 
-大改動可分解為多批時，步驟 0 就切批寫進驗收清單。每批結束寫交接檔 `state/<task>-handoff.md`（完成內容、commit hash、下一批輸入、地雷），state 標 `awaiting_next_batch` 後結束本 session；看門狗自動開**新 session** 接續下一批——新 process = 乾淨 context，資訊靠交接檔 + 檢查點無損傳遞，從根本上控制 context 膨脹。
+大改動可分解為多批時，步驟 0 就切批寫進驗收清單。每批結束寫交接檔 `state/<task>-handoff.md`（完成內容、commit hash、下一批輸入、地雷），state 標 `awaiting_next_batch` 後結束本 session（標準模式回報本批結果；`/dev auto` 只寫交接檔、不回報不等指令，全部批次做完才一次回報）；看門狗自動開**新 session** 接續下一批——新 process = 乾淨 context，資訊靠交接檔 + 檢查點無損傳遞，從根本上控制 context 膨脹。
 
 ### 2.5 lane 分級（試行）
 
