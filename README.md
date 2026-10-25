@@ -42,6 +42,7 @@ claude-code-config/
 │   ├── pw-lock.sh             # Playwright MCP 瀏覽器互斥鎖（多個 QA / PM / design-reviewer 共用一個瀏覽器）
 │   ├── secrets-sync.sh        # （選用）SECRETS 跨機器同步：age 加密進 repo，明文永遠 gitignored
 │   ├── watchdog.sh            # 斷線看門狗核心（平台無關）：復活中斷任務、接續下一批
+│   ├── cleanup-task.sh        # 收工即清：done 時刪證據大檔 / worktree / 執行期暫存（先寫 manifest，有護欄）
 │   ├── install-watchdog.sh    # 看門狗排程安裝器（launchd / cron / Windows 排程器）
 │   ├── codex-probe.sh         # （選用）Codex 呼喚前的可用性/額度探測（未裝 Codex 則永遠 exit 2 安全跳過）
 │   ├── collect-run-metrics.py # 任務級 run 遙測收集器（transcript 解析，零 token 開銷）
@@ -121,7 +122,7 @@ QA/PM 說「通過」不算數，要能被確定性驗證：
 
 ### 2.3 檢查點與看門狗（斷線自我恢復）
 
-走五步驟的任務都維護檢查點檔 `state/<任務slug>.json`（current_step / next_action / status / 心跳），每個 gate 轉換更新一次。`scripts/watchdog.sh` 由排程器每 10 分鐘喚醒（`install-watchdog.sh` 依平台注入 launchd / cron / Windows 工作排程器）：`running` 且心跳逾期且 transcript 沒在動 → `claude --resume` 復活（上限 3 次，transcript mtime 活性判定防誤殺長工具呼叫）；`awaiting_user`（要使用者拍板）與 `reported`（做完等指令）一律不動；`done` 過期自動歸檔；任何狀態閒置超過 `IDLE_ARCHIVE_DAYS`（預設 14 天）搬到 `state/archive/`。復活時帶 state 記錄的 `config_dir`（`CLAUDE_CONFIG_DIR`），多 profile 環境也回到同一個 profile。
+走五步驟的任務都維護檢查點檔 `state/<任務slug>.json`（current_step / next_action / status / 心跳），每個 gate 轉換更新一次。`scripts/watchdog.sh` 由排程器每 10 分鐘喚醒（`install-watchdog.sh` 依平台注入 launchd / cron / Windows 工作排程器）：`running` 且心跳逾期且 transcript 沒在動 → `claude --resume` 復活（上限 3 次，transcript mtime 活性判定防誤殺長工具呼叫）；`awaiting_user`（要使用者拍板）與 `reported`（做完等指令）一律不動；`done` 過期自動歸檔；任何狀態閒置超過 `IDLE_ARCHIVE_DAYS`（預設 14 天）搬到 `state/archive/`；職責 4 以 `cleanup-task.sh --sweep` 接漏網清證據（正常路徑是標 `done` 時就清，見 `acceptance/README.md`「證據留存策略」）。看門狗與所有 agents 都避開 Claude Code 內建的 `rm` 安全確認（bypass 模式也擋不掉）：腳本啟動時關掉巢狀 shell 的誤報，agents 一律寫 `"${VAR:?}"` 或 `find … -delete`，不包含變數的 `bash -c`，否則無人值守的 session 會卡在權限提示。復活時帶 state 記錄的 `config_dir`（`CLAUDE_CONFIG_DIR`），多 profile 環境也回到同一個 profile。
 
 > ⚠️ **安全警示（--dangerously-skip-permissions）**：看門狗預設以 `--dangerously-skip-permissions` 無頭復活 session——復活絕不會卡在權限提示，但代價是**該 session 在無人監督下擁有完整權限**（可執行任意指令、改任意檔案、對外連線）。這是為「全自主開發」情境做的取捨，套用前請確認你接受此風險；若在共用機器、含敏感資料的環境，或你不完全信任任務內容，請在 `state/watchdog.conf` 改為 `PERMISSION_FLAGS=""`（保守模式：復活 session 碰到未在 `settings.json` `permissions.allow` 白名單的工具會停下等人）。
 

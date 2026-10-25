@@ -66,7 +66,7 @@ cp products/HOSTS.md ~/.claude/products/        # 遠端主機登記表範本（
 cp -r skills/ ~/.claude/skills/
 
 # 流程腳本 + 看門狗（建議全裝：pre-review 預檢、verify-deploy 部署驗證、
-# verify-evidence 驗收證據檢查、watchdog 斷線自我恢復、pw-lock 瀏覽器互斥鎖、
+# verify-evidence 驗收證據檢查、watchdog 斷線自我恢復、cleanup-task 收工清證據、pw-lock 瀏覽器互斥鎖、
 # run 遙測 / 複盤 / 外部規格模式的 python 腳本）
 mkdir -p ~/.claude/scripts ~/.claude/state
 cp scripts/*.sh scripts/*.py ~/.claude/scripts/ && chmod +x ~/.claude/scripts/*.sh ~/.claude/scripts/*.py

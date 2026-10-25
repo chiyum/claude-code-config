@@ -42,6 +42,8 @@ resolve_config_dir(){ local f="$1" sid="$2" cfg; cfg=$(jq -r '.config_dir // emp
   [ -z "$cfg" ] && [ -n "$sid" ] && cfg=$(config_dir_of "$(find_transcript "$sid")")
   [ -z "$cfg" ] && cfg="$DEFAULT_CONFIG_DIR"; echo "$cfg"; }
 # 用指定 profile 啟動 claude（背景、無頭）
+# 關掉巢狀 bash -c 與 $(...) 目標的 rm 安全檢查誤報（只認啟動環境），避免無頭復活的 session 卡在權限確認
+export CLAUDE_CODE_DISABLE_INLINE_SHELL_RM_PROMPT=1 CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT=1
 run_claude(){ local cfg="$1" out="$2"; shift 2
   if [ -n "$cfg" ]; then CLAUDE_CONFIG_DIR="$cfg" nohup "$CLAUDE_BIN" "$@" >> "$out" 2>&1 &
   else nohup "$CLAUDE_BIN" "$@" >> "$out" 2>&1 & fi; }
@@ -123,26 +125,21 @@ for f in "$STATE_DIR"/*.json; do
   esac
 done
 
-# ── 職責 4: acceptance 證據清理 ──────────────────────────────
-# 任務閒置超過 EVIDENCE_RETENTION_DAYS 天後刪 evidence/ 目錄（截圖等大檔）。
-# 驗收清單 .md 位於任務目錄根層，永久保留不受影響。
-# 判定「閒置」= 整個任務目錄內沒有任何檔案在保留天數內被動過——
-# 用檔案 mtime 而非 state 的 done 時間，因為舊任務的 state 檔已被職責 3 清掉。
+# ── 職責 4: 證據 / worktree / 執行期暫存清理（保險絲）──────────
+# 交給 cleanup-task.sh --sweep：done 立清；reported / 無 state 的任務閒置滿 EVIDENCE_RETENTION_DAYS 天才清；
+# running / awaiting_user 絕不動。正常路徑是主 Claude 在標 done 時就跑過了，這裡只接漏網。
+# 規則全文見 ../acceptance/README.md「證據留存策略」；腳本自己寫 state/cleanup.log，這裡只記摘要。
 EVIDENCE_RETENTION_DAYS=${EVIDENCE_RETENTION_DAYS:-7}
-ACCEPT_DIR="$HOME/.claude/acceptance"
-for d in "$ACCEPT_DIR"/*/; do
-  [ -d "${d}evidence" ] || continue
-  task=$(basename "$d")
-  # 任務還活著（state 檔存在且狀態非 done）→ 絕不動它的證據
-  sf="$STATE_DIR/$task.json"
-  if [ -f "$sf" ]; then
-    st=$(jq -r '.status // empty' "$sf" 2>/dev/null)
-    case "$st" in done|reported) ;; *) continue ;; esac
+CLEANUP="$HOME/.claude/scripts/cleanup-task.sh"
+SWEEP_INTERVAL_MIN=${SWEEP_INTERVAL_MIN:-360}   # sweep 要掃上千個目錄，6 小時一次就夠（正常路徑是標 done 時立清）
+if [ -x "$CLEANUP" ] || [ -L "$CLEANUP" ]; then
+  if [ -z "$(find "$STATE_DIR/.last-sweep" -mmin -"$SWEEP_INTERVAL_MIN" 2>/dev/null)" ]; then
+    touch "$STATE_DIR/.last-sweep"
+    out=$(EVIDENCE_RETENTION_DAYS="$EVIDENCE_RETENTION_DAYS" bash "$CLEANUP" --sweep --apply 2>&1)
+    n=$(printf '%s\n' "$out" | grep -c '🧹')
+    [ "$n" -gt 0 ] && log "🧹 sweep 清理 $n 個目標（明細見 state/cleanup.log）"
   fi
-  # 保留天數內任務目錄有任何動靜 → 視為仍在使用，跳過
-  [ -n "$(find "$d" -type f -mtime -"$EVIDENCE_RETENTION_DAYS" 2>/dev/null | head -1)" ] && continue
-  sz=$(du -sh "${d}evidence" 2>/dev/null | cut -f1)
-  rm -rf "${d}evidence"
-  log "🧹 清理驗收證據 ${task}/evidence（${sz}，任務閒置超過 ${EVIDENCE_RETENTION_DAYS} 天）"
-done
+else
+  log "⚠️ 找不到 $CLEANUP，職責 4 證據清理未執行"
+fi
 exit 0

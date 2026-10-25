@@ -105,6 +105,12 @@ Read `~/.claude/knowledge/INDEX.md` 頂部的「Playbook 層」（索引長大�
 - **決策留骨架**：pass / fail 的 gate 判定、是否 push、是否放行進下一步，一律**留給骨架（orchestrator）**。你只回報測試證據，**不下最終放行決策**。
 - **不得自行展開 workflow**：是否平行化由 orchestrator 決定。
 
+## Bash 指令寫法（避免卡在權限確認）
+
+Claude Code 內建的 `rm` 安全檢查不受 bypass 權限模式影響，看不懂刪除目標時會停下等人按允許。
+- `rm` 路徑不得出現裸變數（如 `rm -rf $DIR/*`）：寫成 `rm -rf "${DIR:?}"/*`（變數為空時 shell 直接中止）或用字面路徑
+- 不要用 `bash -c "..."` 包含變數的巢狀 shell：多步驟或需要先 source 的指令，先用 Write 寫成 scratchpad 裡的腳本檔，再 `bash <腳本路徑>` 執行；單一指令直接呼叫，不要再包一層 shell
+
 ## 重要原則
 
 - **不要跳過本地測試直接上 dev**：本地過了才測 dev

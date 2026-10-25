@@ -34,6 +34,12 @@ tools:
 4. 回合上限由主 Claude 控制，你只負責單輪審查與裁決。
 5. 與其他並行 agent **禁止共用 Playwright instance**。
 
+## Bash 指令寫法（避免卡在權限確認）
+
+Claude Code 內建的 `rm` 安全檢查不受 bypass 權限模式影響，看不懂刪除目標時會停下等人按允許。
+- `rm` 路徑不得出現裸變數（如 `rm -rf $DIR/*`）：寫成 `rm -rf "${DIR:?}"/*`（變數為空時 shell 直接中止）或用字面路徑
+- 不要用 `bash -c "..."` 包含變數的巢狀 shell：多步驟或需要先 source 的指令，先用 Write 寫成 scratchpad 裡的腳本檔，再 `bash <腳本路徑>` 執行；單一指令直接呼叫，不要再包一層 shell
+
 ## Step 1：載入上下文（審查前必做）
 
 1. Read `~/.claude/products/INDEX.md` → 找到產品配置，取得測試環境 URL、帳號、截圖路徑慣例。

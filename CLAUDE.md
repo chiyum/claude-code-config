@@ -149,6 +149,7 @@
 5. **回報或回頭**
    - dev 測試有問題 → 回到第 1 步
    - 全部通過 → 主 Claude 回報使用者「dev 驗收完成」，state 標 `reported`，**停下來等指令**（是否合 prod、是否再加功能等，由使用者決定）
+   - **使用者確認收工 → 標 `done` 的同一動作跑 `bash ~/.claude/scripts/cleanup-task.sh <slug> --apply`**（刪該任務的證據大檔 / worktree / 執行期暫存，留清單與 manifest；護欄與保留規則見 `acceptance/README.md`「證據留存策略」），結果附在回覆
    - **回報必附「1 分鐘複驗指引」**：確切 URL + 帳號 + 3 步以內操作 + 應看到什麼（直接從凍結清單的驗證步驟摘出最關鍵 1-2 條）。使用者照著走走不通 = 流程缺陷，立即回到第 1 步，不得歸因於使用者操作
    - **回報前收 run 遙測**：跑 `python3 ~/.claude/scripts/collect-run-metrics.py --slug <任務slug>`（時間窗自 state 帶入），把 token 分帳與 agent 派遣摘要附進回報；輸出標「未切窗」的數字不可當比較依據（制度見 `~/.claude/run-metrics/README.md`）
    - **回報末尾必主動問任務評分**（走過五步驟的大任務才問，切批的中間批次、gate、小瑣事都不問）：問「這次任務安排如何？①順暢 ②還行有小地方可改 ③有明顯卡點／冤枉路，可補一句」，得到回覆即以 `rate-run.py` 寫回 verdict。**問了不追**：使用者沒回就擱著，哪天回了再補寫；無 verdict 的 run 不計入複盤門檻。寫完 verdict 後跑 `python3 ~/.claude/scripts/retro-digest.py --due`（≥8 個評分、或 ≥10 筆 run、或距上次 ≥14 天，任一即到期），**回 yes 則順口再問一句「要不要順便 /retro 複盤」**——使用者點頭才跑，說晚點就下次再問；複盤絕不自動觸發、絕不在自主開發中途觸發（制度見 `~/.claude/skills/retro/SKILL.md`）
@@ -186,6 +187,8 @@
 - **全新頁面例外**：功能任務中要「從零長出全新頁面」時，即使指令無設計字眼，也自動開 ui-designer **精簡規格模式**（不問 DESIGN.md、沿用產品既有視覺語言，一輪出規格）——讓設計成為事前決策而非事後補救；反方隨之成對開啟。
 
 ## 編碼風格
+
+- Bash 刪檔（rm／rmdir）的目標含變數時一律寫 `"${VAR:?}"`，或改用 `find … -delete`：否則觸發 Claude Code 寫死的 dangerousRemoval 確認，bypass 模式也擋不掉，自主流程會卡住等人
 
 ### 前端
 

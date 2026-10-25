@@ -65,12 +65,15 @@
 - 用途: 步驟 2 與步驟 4 的 QA/PM 驗收【唯一依據】。architect 更新的規格書僅作為文件，不作為驗收依據
 - 需求中途變更: 由使用者明示後，回到步驟 0 重新產生並確認新清單，舊清單標記為 superseded
 
-## 證據留存策略
+## 證據留存策略（收工即清，腳本 `scripts/cleanup-task.sh`）
 
-- `evidence/` 目錄（截圖、log 等大檔）保留至**任務閒置滿 7 天**，之後由看門狗（`scripts/watchdog.sh` 職責 4）自動刪除
-- 驗收清單 `.md`（任務目錄根層）**永久保留**，作為任務歷史
-- 「閒置」= 任務目錄內所有檔案的 mtime 都超過 7 天，且 state 檔不存在或狀態為 done；`awaiting_user` / `running` 中的任務證據絕不清
-- 調整保留天數: 在 `~/.claude/state/watchdog.conf` 設 `EVIDENCE_RETENTION_DAYS=<天數>`
+- **觸發點**：使用者確認收工、state 標 `done` 的同一動作，主 Claude 跑 `cleanup-task.sh <slug> --apply`，不等天數。`reported`（做完等指令）時**不刪**，使用者還可能回頭看截圖
+- **刪什麼**：`acceptance/<slug>/**/evidence/`、`state/<slug>/` 底下子目錄（runtime / decompiled / venv 等執行期暫存）、`worktrees/*<slug>*`（下載的 apk / 7z 等中間產物放在這三處才會被清）
+- **留什麼**：驗收清單 `.md`、handoff / questions / state json（看門狗搬 archive）、ADR、知識卡、規格、completion-report、`state/<slug>/` 頂層小檔。刪前先寫 `evidence-manifest.txt`（大小 / mtime / sha256 / 路徑），以後追「當時驗了什麼」看它
+- **護欄（腳本自己擋）**：state 為 running / awaiting_user / awaiting_next_batch → 不動；目錄有程序開著檔案（lsof）→ 跳過並回報；worktree 有未 commit 變更或分支未合進 main → 跳過並回報；每筆刪除寫一行到 `state/cleanup.log`；只動 acceptance / state / worktrees，絕不碰 specs / products / knowledge
+- **保險絲**：看門狗職責 4 定期跑 `cleanup-task.sh --sweep --apply`（預設 6 小時一次，`SWEEP_INTERVAL_MIN` 可調）：`done` 立清；`reported` / 無 state 的任務閒置滿 `EVIDENCE_RETENTION_DAYS`（預設 7，`watchdog.conf` 可調）才清
+- **切批任務中途清**：多批任務不必等全案收工——某批的證據 gate（verify-evidence＋主 Claude 抽驗）通過、結果已寫進 handoff 後，該批的大證據（截圖、錄影、xcresult、log）即可先刪，刪前照樣寫 manifest；Xcode DerivedData／gradle 建置暫存屬可再生產物，lsof 無人使用就可清，不需等批次
+- 一次性盤點：`cleanup-task.sh --backlog` 列所有任務的 status / 閒置天數 / 可回收大小，以及名稱對不到任何任務的孤兒 worktree（`--orphans [--apply]` 只清乾淨＋已合併＋閒置的，其餘人工處理）
 
 ## 證據完整性鐵則
 

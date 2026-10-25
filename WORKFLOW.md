@@ -61,7 +61,7 @@ flowchart TD
     subgraph Resilience["檢查點與看門狗（斷線自我恢復）＋ 批次=Session"]
       direction TB
       SC["state/&lt;slug&gt;.json 檢查點<br/>每個 gate 轉換更新 current_step / next_action / 心跳"]
-      WD["watchdog.sh（launchd / cron 每 10 分鐘）<br/>running 心跳逾期且 transcript 沒動 → claude --resume 復活（上限 3 次）<br/>awaiting_next_batch → 開新 session「/dev 繼續」｜awaiting_user / reported 不動<br/>復活帶 state 的 config_dir（同一 profile）；閒置超過 14 天歸檔"]
+      WD["watchdog.sh（launchd / cron 每 10 分鐘）<br/>running 心跳逾期且 transcript 沒動 → claude --resume 復活（上限 3 次）<br/>awaiting_next_batch → 開新 session「/dev 繼續」｜awaiting_user / reported 不動<br/>復活帶 state 的 config_dir（同一 profile）；閒置超過 14 天歸檔<br/>職責 4：cleanup-task.sh --sweep 接漏網清證據（done 立清、reported 閒置 7 天）"]
       BATCH["大型任務切批：每批結束寫 handoff.md → 標 awaiting_next_batch → 新 session 乾淨 context 接續"]
       SC -.監控.-> WD
       WD -.拉起.-> BATCH

@@ -29,7 +29,12 @@ if [ -n "${GO_MODULES}" ]; then
       # 那些檔案即使編不起來這裡照樣全綠（實例：integration 檔相依未提交型別，
       # pre-review 與工程品質 gate 全綠，直到在乾淨 checkout 上才現形）。
       # 有幾個 tag 就跑幾次，新增 tag 自動涵蓋。
-      for build_tag in $(grep -rhoE '^//go:build [a-z_]+' --include='*.go' . 2>/dev/null | awk '{print $2}' | sort -u); do
+      # `ignore` 是 Go 慣例的「永不編譯」標籤（go generate 的產生器腳本常用）：帶 -tags=ignore 會把
+      # 標準庫與相依套件裡所有 //go:build ignore 的 gen.go 一併拉進視野，任何 repo 都會假紅，故排除。
+      # GOOS / GOARCH 名稱（linux、darwin、amd64…）不是自訂 tag：在 macOS 帶 -tags=linux 會讓標準庫
+      # 自相衝突而假紅（實例：//go:build linux || darwin），一併排除。
+      platform_tags=$(go tool dist list 2>/dev/null | tr '/' '\n' | sort -u | tr '\n' '|' | sed 's/|$//')
+      for build_tag in $(grep -rhoE '^//go:build [a-z_]+' --include='*.go' . 2>/dev/null | awk '{print $2}' | sort -u | grep -vx 'ignore' | grep -vxE "${platform_tags:-linux|darwin|windows}|unix"); do
         echo "--- go vet -tags=${build_tag} (${module_dir}) ---"
         go vet -tags="${build_tag}" ./... || exit 1
       done
