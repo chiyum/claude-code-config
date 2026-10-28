@@ -46,12 +46,12 @@ claude-code-config/
 │   ├── install-watchdog.sh    # 看門狗排程安裝器（launchd / cron / Windows 排程器）
 │   ├── codex-probe.sh         # （選用）Codex 呼喚前的可用性/額度探測（未裝 Codex 則永遠 exit 2 安全跳過）
 │   ├── collect-run-metrics.py # 任務級 run 遙測收集器（transcript 解析，零 token 開銷）
-│   ├── report-runs.py         # run 對照報表（按 config 版本分組看制度改動趨勢；--pilot 看 lane 試行對照）
+│   ├── report-runs.py         # run 對照報表（按 config 版本分組看制度改動趨勢；--pilot 看 lane 對照歷史基線）
 │   ├── retro-digest.py        # 複盤彙整：上次複盤後的 verdict / 新卡；--due 判斷是否該提議 /retro
 │   └── rate-run.py            # 使用者一行驗收評分寫回 run 記錄
 ├── acceptance/                # 凍結驗收清單 + 驗收證據（步驟 0 產生，PM 驗收唯一依據）
 │   ├── README.md              # 三段式清單格式 / 理解回述 / 證據規約 / 任務憲章格式 / 凍結規則
-│   ├── LANE_PROTOCOL.md       # lane 分級（S / M / L）試行協定：各級流程、共同規則（含派 agent 後盯活性）、state 追加欄位
+│   ├── LANE_PROTOCOL.md       # lane 分級（S / M / L）協定：各級流程、共同規則（含派 agent 後盯活性、線上操作前三步檢查）、state 追加欄位
 │   ├── EXTERNAL_SPEC_PROTOCOL.md # 外部凍結規格模式（入口 B）完整程序
 │   └── COMPLETION_REPORT_TEMPLATE.md # 外部規格 run 的完成報告模板
 ├── state/                     # 任務檢查點與看門狗（斷線自我恢復 + 跨 session 接續）
@@ -98,7 +98,7 @@ claude-code-config/
 → ② 本地 QA + PM 驗收 → ③ push 觸發部署 → ④ 部署驗證 + 線上 QA → ⑤ 回報
 ```
 
-開工前先**定 lane**（S / M / L，試行中）：S 是一句話能描述的小改，免 reviewer / PM / 清單；M、L 走完整步驟，L（migration / 權限 / 付費 / 對外暴露面 / prod 資料）再加憲章、線上唯讀預檢與反方 PM。見「2.5 lane 分級」。
+開工前先**定 lane**（S / M / L）：S 是一句話能描述的小改，免 reviewer / PM / 清單；M、L 走完整步驟，L（migration / 權限 / 付費 / 對外暴露面 / prod 資料）再加憲章、線上唯讀預檢與反方 PM。見「2.5 lane 分級」。
 
 主 Claude 不直接改 code，而是把需求、上下文、約束打包交給對應 agent。architect 實作時，**code + 規格書更新 + （必要時）ADR / 知識卡放在同一個 commit**。
 
@@ -130,7 +130,7 @@ QA/PM 說「通過」不算數，要能被確定性驗證：
 
 大改動可分解為多批時，步驟 0 就切批寫進驗收清單。每批結束寫交接檔 `state/<task>-handoff.md`（完成內容、commit hash、下一批輸入、地雷），state 標 `awaiting_next_batch` 後結束本 session（標準模式回報本批結果；`/dev auto` 只寫交接檔、不回報不等指令，全部批次做完才一次回報）；看門狗自動開**新 session** 接續下一批——新 process = 乾淨 context，資訊靠交接檔 + 檢查點無損傳遞，從根本上控制 context 膨脹。
 
-### 2.5 lane 分級（試行）
+### 2.5 lane 分級（2026-09-29 試行、2026-10-28 轉正）
 
 每個改 code 任務開工前定級，使用者沒指定就問一次（自主模式也問，這是唯一停點）：
 
@@ -140,7 +140,9 @@ QA/PM 說「通過」不算數，要能被確定性驗證：
 | M | 多檔改動或有行為變化，但不碰 L 的五項 | Explore 盤點 → 清單 → architect → pre-review → reviewer 一輪 → 相關測試一次 → push → 10 分鐘線上檢查 |
 | L | 含 migration、權限／認證、付費、對外暴露面、prod 資料任一 | M 全套 ＋ 憲章 ＋ 線上唯讀預檢 ＋ 反方 PM |
 
-state 多記 `lane` / `estimated_minutes` / `gate_reruns` / `live_regressions`，收尾由 `collect-run-metrics.py` 自動算 `self_verdict`；試行期滿用 `report-runs.py --pilot` 對照歷史基線決定轉正或回退。全文見 `acceptance/LANE_PROTOCOL.md`。
+state 多記 `lane` / `estimated_minutes` / `gate_reruns` / `live_regressions` / `batches` / `approved_extra_rounds`，收尾由 `collect-run-metrics.py` 自動算 `self_verdict`（派遣額度按批次倍數算、使用者同意加開的回合不計、超時只提醒不判 bad；有使用者評分時報表以使用者為準）。試行一個月、105 筆 run 後時長中位數降 46%、out tokens 降 63%，已轉正；`report-runs.py --pilot` 保留供對照歷史基線。全文見 `acceptance/LANE_PROTOCOL.md`。
+
+共同規則另有兩條事故驅動的護欄：派出 agent 或背景長步驟後主 Claude 自己盯產物（第 9 條）；對線上下任何會重建／重啟／部署的指令前先查實際時段、查連帶副作用、執行後讀 log 結尾確認落地版本（第 10 條）。
 
 ### 2.6 外部凍結規格模式（入口 B）
 

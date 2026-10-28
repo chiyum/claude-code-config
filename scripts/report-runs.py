@@ -63,7 +63,8 @@ def pilot_report():
             "qa_pm_calls": median([c.get("qa", 0) + c.get("pm", 0) for c in calls]),
             "agent_calls": median([sum(c.values()) for c in calls]),
             "out_tokens": median([((r.get("tokens") or {}).get("total") or {}).get("output_tokens", 0) for r in rs]),
-            "bad_rate": (sum(1 for r in rs if r.get("self_verdict") == "bad") / len(rs)) if rs else None,
+            # 有使用者 verdict 以使用者為準，沒有才用 self_verdict（LANE_PROTOCOL §5）
+            "bad_rate": (sum(1 for r in rs if (r.get("verdict") or r.get("self_verdict")) == "bad") / len(rs)) if rs else None,
             "live_regressions": sum(int(r.get("live_regressions") or 0) for r in rs) if rs else None,
         }
 
@@ -78,7 +79,7 @@ def pilot_report():
     print("| 指標 | " + " | ".join(f"{n}（{c} 筆）" for n, _, c in cols) + " |")
     print("|---|" + "---|" * len(cols))
     labels = [("minutes", "時長（分）"), ("reviewer_calls", "reviewer 派遣"), ("qa_pm_calls", "qa+pm 派遣"),
-              ("agent_calls", "agent 派遣"), ("out_tokens", "out tokens"), ("bad_rate", "self_verdict bad 率"),
+              ("agent_calls", "agent 派遣"), ("out_tokens", "out tokens"), ("bad_rate", "bad 率（使用者 verdict 優先）"),
               ("live_regressions", "線上回歸總數")]
     for key, label in labels:
         cells = []

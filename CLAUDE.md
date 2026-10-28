@@ -80,7 +80,7 @@
 
 每一次「修改 code」的任務都必須走這個流程，主 Claude 是 orchestrator，依序交棒給對應 agent，不要自己動手寫 code。
 
-> **lane 分級試行（2026-09-29 起；決策點 10 筆 lane run 或 2026-10-13）**：每個改 code 任務開始前先定級 S／M／L——使用者沒指定就用 AskUserQuestion 確認一次（自主模式也問，這是唯一停點）；S 免 reviewer、免 PM、免清單。各級流程、全 lane 共同規則與 state 追加欄位全文見 `~/.claude/acceptance/LANE_PROTOCOL.md`；試行期該檔凌駕本節與之衝突的條款。
+> **lane 分級（2026-09-29 試行、2026-10-28 轉正）**：每個改 code 任務開始前先定級 S／M／L——使用者沒指定就用 AskUserQuestion 確認一次（自主模式也問，這是唯一停點）；S 免 reviewer、免 PM、免清單。各級流程、全 lane 共同規則與 state 追加欄位全文見 `~/.claude/acceptance/LANE_PROTOCOL.md`；該檔凌駕本節與之衝突的條款。
 
 > **入口規則**：使用者輸入 `/dev` 當然觸發 dev skill；使用者用**自然語言授權自主開發**（「自主開發」「不用問做完再回報」「整個流程跑完」等語意）時，主 Claude 必須**主動 invoke dev skill（等同 /dev auto）**再開始，不得只憑記憶照本節執行——skill 內含檢查點、憲章、切批等本節未展開的細節。日常明確指示的單點修改（「幫我修這個 bug」無自主授權語意）照本節流程走即可，不強制過 skill。
 >

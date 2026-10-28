@@ -18,7 +18,7 @@ flowchart TD
     Type -->|"模糊大需求（新產品且 ≥2 關鍵維度未指明）"| Disc["/discover 需求訪談<br/>七大面向分階段問（每題選項＋白話＋推薦）→ 需求釐清書<br/>「不知道」給預設值記入幫你做的決定"]
     Disc --> Lane
     Dev --> Lane
-    Lane{"定 lane（試行）<br/>使用者沒指定就問一次（自主模式也問，唯一停點）"}
+    Lane{"定 lane<br/>使用者沒指定就問一次（自主模式也問，唯一停點）"}
     Lane -->|"S：一句話能描述的 diff"| SFast["S 快速道<br/>architect → build / lint → commit → push → 部署後親自點一次<br/>免 reviewer / PM / 清單（state 照建）"]
     Lane -->|"M / L"| S0
     SFast --> S5

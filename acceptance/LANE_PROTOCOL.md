@@ -1,6 +1,6 @@
-# 分級開發流程（lane 試行；2026-09-29 起）
+# 分級開發流程（2026-09-29 試行，2026-10-28 轉正）
 
-試行設計：不與舊流程並跑，改用「新流程 run 對照 9 月歷史基線」。舊流程 9 月的已切窗 run 就是對照組（凍結成 `~/.claude/run-metrics/baseline-202609.json`，欄位見 `scripts/report-runs.py` 的 `pilot_report()`；沒有基線檔時 `--pilot` 只提示讀不到基線，需先自行凍結一份），新 run 自帶 `lane` 欄位。**滿 10 筆 lane run 或 2026-10-13（先到者）**跑 `python3 ~/.claude/scripts/report-runs.py --pilot`，使用者拍板轉正、調整或回退。試行期間本檔凌駕 `CLAUDE.md` 五步驟中與之衝突的條款；轉正時才改五步驟正文與 `agents/*.md`。
+轉正紀錄：試行採「新流程 run 對照歷史基線」（基線凍結成 `~/.claude/run-metrics/baseline-202609.json`，欄位見 `scripts/report-runs.py` 的 `pilot_report()`；沒有基線檔時 `--pilot` 只提示讀不到基線，需先自行凍結一份），累積 105 筆後時長中位數 326→177 分、out tokens 255k→95k，2026-10-28 複盤拍板轉正。本檔仍凌駕 `CLAUDE.md` 五步驟中與之衝突的條款；五步驟正文與 `agents/*.md` 的收斂另開任務。`report-runs.py --pilot` 保留供日後對照。
 
 ## 1. 開始前定級（每個改 code 的任務）
 
@@ -32,6 +32,7 @@
 7. 跨 agent 對他人 commit 的描述，決策前先 `git show --stat` 核實
 8. 知識卡：補卡前先 `rg` 同 problem-class＋tech 的既有卡，命中就併入既有卡；agent 只能標 `status: proposed`，`validated` 由使用者或線上證據才能標
 9. 派出 agent 或背景長步驟（部署、e2e、切換）後，主 Claude 用 Monitor／until 迴圈自己盯產物（證據目錄、commit、log 的 PASS／FAIL 列），不只等完成通知；約 15–20 分鐘沒有新產物就用 SendMessage 問狀況；轉達裁決後要確認對方有回應；包裝腳本必須把工具的結束碼傳出來，不得恆為 0（2026-10-14 複盤拍板）
+10. 對線上環境（含 dev）下任何會觸發重建、重啟、部署的指令（部署腳本、PaaS 的 `up`／改變數、`gh workflow run`、`compose up`／`restart`）之前，先做三件事：①跑 `TZ=<當地時區> date` 確認實際時段，對照產品配置的部署窗口或中斷規約，不憑對話印象判斷「現在是離峰」 ②查這個指令還會順帶觸發什麼：讀產品配置的地雷段、看腳本的 diff 或 dry-run、PaaS 改變數時加「不自動部署」旗標（如 Railway 的 `--skip-deploys`）、部署本地 HEAD 前比對 DB migration 版本、push 與部署串接要 `set -o pipefail` 並驗 `origin/main` 等於本地 HEAD ③執行後讀部署 log 結尾，確認實際落地的 SHA 與服務，不只看 version endpoint（它是瞬時值，健檢失敗自動回退後會騙人）（2026-10-28 複盤拍板：同類事故在四個不同產品各發生一次，含白天誤判為離峰重啟、改變數觸發舊碼重建、push 被拒仍觸發部署、回退後 version endpoint 誤報成功）
 
 ## 4. state 追加欄位
 
@@ -44,12 +45,16 @@
 | `live_regressions` | 整數 | 部署後線上檢查才發現、本機沒抓到的問題數 |
 | `user_aborted` | true | 使用者中途喊停或要求換做法 |
 | `lane_changed_from` | S / M / L | 中途改級時 |
+| `batches` | 整數，預設 1 | 切批或多產品時每批／每產品 +1；self_verdict 的 reviewer 與 qa＋pm 額度按此倍數算 |
+| `approved_extra_rounds` | 整數 | 使用者同意加開的 reviewer 回合，每同意一輪 +1 |
 
-## 5. 收尾 self_verdict（`collect-run-metrics.py` 自動算，與使用者的 `verdict` 分欄）
+## 5. 收尾 self_verdict（`collect-run-metrics.py` 自動算，與使用者的 `verdict` 分欄；2026-10-28 複盤修正）
 
-- **bad**：`user_aborted`，或實際時長 > 2 × `estimated_minutes`，或 `live_regressions` ≥ 2
-- **ok**：reviewer 派遣 > 1，或 qa＋pm 派遣超過 lane 額度（S 0、M 3、L 6），或 `live_regressions` = 1，或 `gate_reruns` > 0
+- **bad**：`user_aborted`，或 `live_regressions` ≥ 2
+- **ok**：reviewer 派遣 > `batches` + `approved_extra_rounds`，或 qa＋pm 派遣超過 lane 額度 × `batches`（S 0、M 3、L 6），或 `live_regressions` = 1，或 `gate_reruns` > 0，或實際時長 > 2 × `estimated_minutes`（時長含等使用者的時間，只當提醒不判 bad）
 - **good**：其餘
+- 有使用者 `verdict` 的 run，報表一律以使用者為準；self_verdict 只補未評分的 run
+- 收尾填 `live_regressions` 前，先對一次 handoff 裡記的「上線後才發現的缺陷」數；不一致以 handoff 為準（修正前自評與使用者評分只有 62% 一致，且幾乎都是自評偏嚴）
 
 ## 6. 試行比較與保險絲
 

@@ -169,7 +169,7 @@ claude
 | `skills/verify-ocr-version/` | 驗證 sidecar 部署版本 | 🔧 選裝 |
 | `skills/retro/` + `scripts/retro-digest.py` | 宏觀自我複盤迴圈：任務完成主動收評分，`retro-digest.py --due` 到期（≥8 個評分 / ≥10 筆 run / 距上次 ≥14 天）提議複盤，找跨任務流程反模式、產提案由使用者圈選才改規則 | 🔧 選裝（推薦） |
 | `skills/spec-check/` + `acceptance/EXTERNAL_SPEC_PROTOCOL.md` + `scripts/*spec*` | 外部凍結規格模式：規格由外部治理者凍結時用 `/dev --spec <SPEC.md>` 開發，驗 hash、擋漂移、產完成報告；`/spec-check` 做凍結前可行性檢查 | 🔧 選裝 |
-| `acceptance/LANE_PROTOCOL.md` | lane 分級（S / M / L）試行協定：小改免 reviewer / PM / 清單，大改加憲章與線上預檢 | ✅ 推薦（CLAUDE.md 引用） |
+| `acceptance/LANE_PROTOCOL.md` | lane 分級（S / M / L）協定：小改免 reviewer / PM / 清單，大改加憲章與線上預檢 | ✅ 推薦（CLAUDE.md 引用） |
 | `DESIGN_FLOW.md` | 切版設計流程：只在「設計 / 切版 / 風格」意圖任務才讀，DESIGN.md token 映射進專案既有設定 | ✅ 推薦（CLAUDE.md 引用） |
 | `products/HOSTS.md` | 遠端主機登記表範本 | 📋 參考 |
 | `scripts/secrets-sync.sh` + `githooks/pre-commit` | SECRETS 跨機器同步（age 加密）與防明文進 git 的 hook | 🔧 選裝 |

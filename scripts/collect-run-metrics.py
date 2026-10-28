@@ -265,25 +265,29 @@ def self_verdict(run):
     calls = run.get("agent_calls") or {}
     est, act = run.get("estimated_minutes"), run.get("actual_minutes")
     live = int(run.get("live_regressions") or 0)
+    # 2026-10-28 複盤修正：派遣額度按批次倍數算、使用者同意加開的回合不計、超時只降 ok
+    batches = max(int(run.get("batches") or 1), 1)
+    extra = int(run.get("approved_extra_rounds") or 0)
     reasons = []
     if run.get("user_aborted"):
         reasons.append("使用者中途喊停")
-    if est and act and act > 2 * est:
-        reasons.append(f"實際 {act:.0f} 分 > 2×預估 {est} 分")
     if live >= 2:
         reasons.append(f"線上回歸 {live} 個")
     if reasons:
         return "bad", "；".join(reasons)
-    quota = LANE_QA_PM_QUOTA.get(run.get("lane"), 6)
+    quota = LANE_QA_PM_QUOTA.get(run.get("lane"), 6) * batches
+    rev_cap = batches + extra
     qa_pm = calls.get("qa", 0) + calls.get("pm", 0)
-    if calls.get("reviewer", 0) > 1:
-        reasons.append(f"reviewer {calls['reviewer']} 輪")
+    if calls.get("reviewer", 0) > rev_cap:
+        reasons.append(f"reviewer {calls['reviewer']} 輪 > 上限 {rev_cap}（{batches} 批＋同意加開 {extra}）")
     if qa_pm > quota:
-        reasons.append(f"qa+pm {qa_pm} 次 > lane 額度 {quota}")
+        reasons.append(f"qa+pm {qa_pm} 次 > lane 額度 {quota}（{batches} 批）")
     if live == 1:
         reasons.append("線上回歸 1 個")
     if int(run.get("gate_reruns") or 0) > 0:
         reasons.append(f"gate 重跑 {run['gate_reruns']} 次")
+    if est and act and act > 2 * est:
+        reasons.append(f"實際 {act:.0f} 分 > 2×預估 {est} 分（含等待，僅提醒）")
     if reasons:
         return "ok", "；".join(reasons)
     return "good", ""
@@ -402,6 +406,8 @@ def main():
     run["gate_reruns"] = int(st.get("gate_reruns") or 0)
     run["live_regressions"] = int(st.get("live_regressions") or 0)
     run["user_aborted"] = bool(st.get("user_aborted"))
+    run["batches"] = int(st.get("batches") or 1)
+    run["approved_extra_rounds"] = int(st.get("approved_extra_rounds") or 0)
     run["self_verdict"], run["self_verdict_reason"] = self_verdict(run) if lane else (None, None)
 
     os.makedirs(RUNS_DIR, exist_ok=True)
