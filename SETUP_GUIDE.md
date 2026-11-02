@@ -55,6 +55,8 @@ cp knowledge/*.md ~/.claude/knowledge/
 mkdir -p ~/.claude/hooks
 cp hooks/slack-notify.sh ~/.claude/hooks/
 chmod +x ~/.claude/hooks/slack-notify.sh
+cp hooks/guard-background-wait.sh ~/.claude/hooks/
+chmod +x ~/.claude/hooks/guard-background-wait.sh   # settings.json 的 PreToolUse 已指向此路徑；需要 jq
 
 # 產品配置（建議裝 INDEX + 範例，再依你的專案新增）
 mkdir -p ~/.claude/products

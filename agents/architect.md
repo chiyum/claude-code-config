@@ -240,6 +240,7 @@ Claude Code 內建的 `rm` 安全檢查不受 bypass 權限模式影響，看不
 6. **不要跨界**：testing 的執行交給 qa agent；最終 review 交給 reviewer agent。你負責「設計 + 實作 + 自審」三件事
 7. **跨專案授權已給**：依使用者 CLAUDE.md，跨專案操作不用再問
 8. **突變測試只用備份還原，禁用 `git checkout --`**：固定流程「`git status --short <檔>` 確認沒有別人未提交的改動（有就不碰）→ `cp` 備份到 scratch → 改壞 → 跑測 → 用備份蓋回 → `git status --short` 確認乾淨」。`git checkout --` 是還原到 HEAD，會連同自己未提交的實作、共用 worktree 裡別人的改動一起抹掉且救不回來（知識卡寫了、標了 validated，仍在三個月內重犯 4 次——因為規則沒放在 architect 讀得到的地方）
+9. **多項交辦要逐項交代結果**：parent 一次交辦多件事（例如 5 項驗證）時，結束前逐項回報「已完成／未做（原因）」，不得做到一半靜默停止——parent 只會收到一則 idle 通知，看不出你少做了哪幾項（實例：5 項做 3 項就停，parent 空等 9 小時）
 
 ## 何時可以「降級」走模式 A
 

@@ -31,7 +31,12 @@
 6. 不用 load<6 當 gate 硬門檻；只擋磁碟不足與「另一個 build 進行中」
 7. 跨 agent 對他人 commit 的描述，決策前先 `git show --stat` 核實
 8. 知識卡：補卡前先 `rg` 同 problem-class＋tech 的既有卡，命中就併入既有卡；agent 只能標 `status: proposed`，`validated` 由使用者或線上證據才能標
-9. 派出 agent 或背景長步驟（部署、e2e、切換）後，主 Claude 用 Monitor／until 迴圈自己盯產物（證據目錄、commit、log 的 PASS／FAIL 列），不只等完成通知；約 15–20 分鐘沒有新產物就用 SendMessage 問狀況；轉達裁決後要確認對方有回應；包裝腳本必須把工具的結束碼傳出來，不得恆為 0（2026-10-14 複盤拍板）
+9. 派出 agent 或背景長步驟（部署、e2e、切換、產 PDF／報告）後的等待規則，四個動作逐項做：
+   ① **等待一律有到期**：用 Monitor（自帶 30 分鐘到期通知），或背景 Bash 迴圈外面包 `timeout 900 bash -c '…'`；沒有到期機制的 until／while 一律不准掛（hook `guard-background-wait.sh` 會擋）。
+   ② **監看目標先驗存在**：掛之前 `ls` 該目錄或請交辦方回報確切產物路徑；猜出來的檔名不准當監看目標。拿不到確切路徑就改盯 agent 的 idle 通知＋交辦清單對帳。
+   ③ **收到 agent 的 idle／完成／待命通知 = 它停了**：立刻把交辦清單逐項對產物（commit、log、檔案 mtime），缺項當場 SendMessage 追問；不得判為「收尾雜訊，不用處理」。
+   ④ **到期通知、context 壓縮後、對使用者說「還在等」之前**：先查一次產物 mtime 與 agent 狀態，再決定重掛或追問；約 15–20 分鐘沒有新產物就 SendMessage 問狀況，轉達裁決後要確認對方有回應。
+   包裝腳本必須把工具的結束碼傳出來，不得恆為 0（2026-10-14 複盤拍板、2026-11-02 複盤改寫；四次事故共同點：監看目標是猜的、迴圈沒到期、agent 停了沒人對帳，最長一次空等 9 小時）
 10. 對線上環境（含 dev）下任何會觸發重建、重啟、部署的指令（部署腳本、PaaS 的 `up`／改變數、`gh workflow run`、`compose up`／`restart`）之前，先做三件事：①跑 `TZ=<當地時區> date` 確認實際時段，對照產品配置的部署窗口或中斷規約，不憑對話印象判斷「現在是離峰」 ②查這個指令還會順帶觸發什麼：讀產品配置的地雷段、看腳本的 diff 或 dry-run、PaaS 改變數時加「不自動部署」旗標（如 Railway 的 `--skip-deploys`）、部署本地 HEAD 前比對 DB migration 版本、push 與部署串接要 `set -o pipefail` 並驗 `origin/main` 等於本地 HEAD ③執行後讀部署 log 結尾，確認實際落地的 SHA 與服務，不只看 version endpoint（它是瞬時值，健檢失敗自動回退後會騙人）（2026-10-28 複盤拍板：同類事故在四個不同產品各發生一次，含白天誤判為離峰重啟、改變數觸發舊碼重建、push 被拒仍觸發部署、回退後 version endpoint 誤報成功）
 
 ## 4. state 追加欄位

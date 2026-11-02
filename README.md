@@ -30,7 +30,8 @@ claude-code-config/
 │   ├── design-reviewer.md     # 視覺審查員（反方）：三視口截圖六維度視覺驗收
 │   └── security-auditor.md    # 資安審查員（基礎設施面）：伺服器架好後八維度防禦式資安審查
 ├── hooks/
-│   └── slack-notify.sh        # Stop hook：完成回覆後推 Slack
+│   ├── slack-notify.sh        # Stop hook：完成回覆後推 Slack
+│   └── guard-background-wait.sh # PreToolUse hook：擋沒到期的背景等待迴圈
 ├── scripts/                   # 流程用確定性腳本
 │   ├── verify-deploy.sh       # 事件驅動部署驗證：輪詢 version endpoint 確認新版本上線
 │   ├── pre-review.sh          # reviewer 前的確定性預檢（lint / go vet / Redis TTL 掃描）
@@ -208,6 +209,8 @@ Skill 是可重複使用的自動化腳本，用自然語言觸發：
 
 `hooks/slack-notify.sh` 在每次 Claude 回覆後，自動把回覆內容推到 Slack channel，方便不在電腦前時追蹤進度。
 
+`hooks/guard-background-wait.sh`（PreToolUse／Bash）擋「沒有到期機制的背景等待迴圈」：背景 Bash 含 `until`／`while true` 卻沒包 `timeout`，當場拒絕並提示改用 Monitor 或 `timeout 900 bash -c '…'`。起因是同一條「派出後自己盯產物」的規則補了兩次字句仍再犯（最長空等 9 小時），病灶之一（迴圈永不到期）是純語法可判定的，所以改由 hook 確定性地擋；其餘三個病灶（監看目標是猜的、agent idle 沒對帳、到期後沒先查現況）寫在 `acceptance/LANE_PROTOCOL.md` 第 9 條。`bash hooks/guard-background-wait.sh --selftest` 可跑 7 例含負向對照。
+
 ### 9. 選用整合：Codex 異模型第二意見（預設停用）
 
 同模型的 reviewer 有系統性盲點，異模型（OpenAI Codex CLI）在四種關鍵場景提供第二視角：重大改動的異模型加掃、卡關 3 次後的破局第二腦、極難推理的獨立解交叉比對、OpenAI 生態系問題。設計重點是**選用且 non-blocking**：
@@ -218,7 +221,7 @@ Skill 是可重複使用的自動化腳本，用自然語言觸發：
 
 ### 10. 設計雙 agent（正方 × 反方）
 
-設計 / 切版任務與全新頁面採「正方先設計、反方後驗收」：`ui-designer` 在動 code 前產出可直接實作的設計規格（禁形容詞、全數值），architect 照規格實作，`design-reviewer` 用 Playwright 三視口截圖對照**同一份規格**裁決退修（≤3 回合）。兩者成對觸發、日常小修不開，流程不變重。動畫實作建議搭配官方 gsap-skills plugin（`claude plugin install gsap-skills@gsap-skills`）。
+設計 / 切版任務與全新頁面採「正方先設計、反方後驗收」：`ui-designer` 在動 code 前產出可直接實作的設計規格（禁形容詞、全數值），architect 照規格實作，`design-reviewer` 用 Playwright 三視口截圖對照**同一份規格**裁決退修（≤3 回合）。任務附有原稿圖檔（Figma 匯出 PNG）時，**原稿是最高基準**：反方每頁把原稿與實作成對打開、用 `magick` 取樣關鍵色碼列「原稿 vs 實作」表，報告加「原稿忠實度」列；主 Claude 的抽驗也必須原稿＋實作成對看（`DESIGN_FLOW.md` §6）——這是 2026-11-02 複盤的教訓：1,593 張原稿下載了、反方只開 1 張、審的是通用美感，結果使用者開站 1 小時抓到 3 處顏色不符。兩者成對觸發、日常小修不開，流程不變重。動畫實作建議搭配官方 gsap-skills plugin（`claude plugin install gsap-skills@gsap-skills`）。
 
 ### 11. Run 遙測與複盤迴圈（制度改動的量化基準 + L4 自我進化）
 

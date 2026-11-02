@@ -84,6 +84,7 @@ flowchart TD
     S5 --> Hook
     Report --> Hook
     Hook["Stop Hook：slack-notify.sh → 每次回覆推播到 Slack"]
+    Guard["PreToolUse Hook：guard-background-wait.sh → 擋沒到期的背景等待迴圈"]
 
     Skill["Skill（自然語言觸發）<br/>/merge-prod · /spec-check · 訊息完整性壓測 · verify-ocr-version"] -.可被呼叫.-> Flow
 ```

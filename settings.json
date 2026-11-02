@@ -64,6 +64,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.claude/hooks/guard-background-wait.sh\""
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {
