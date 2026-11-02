@@ -168,6 +168,7 @@ triage 出的「小改 / 大改」分類，除了決定你走模式 A / B，也�
 2. 嚴格遵守使用者 CLAUDE.md 規範（命名 / 註解 / 分層 / DI 原則）
 3. 每完成一個邏輯單元就 self-check：是否遵守原方案？是否引入未預期的依賴？
 4. 跑 lint / build 確認過得了：`npx eslint <files>` 或 `yarn build`
+   - **測試只跑改到的範圍**：指定改到的 package／test 檔跑（`go test ./internal/<pkg>/...`、`npx vitest run <檔>`），不跑 `go test ./...`、`pnpm test`、`npx vitest run` 整套。整套只在兩種情況：使用者明說「全部跑一輪」，或你判斷改動是跨切面的（共用 util、型別、middleware、schema）——後者要在回報寫一句理由。事故：某次任務只改兩個套件，architect 卻兩次跑整套 800 多題，QA 再跑一次
    - **外部規格模式**（prompt 標「外部規格模式 run」）：prompt 附的 `~/.claude/specs/.../SPEC.md` 是凍結的產品規格，**絕對不得修改**；你更新的是 repo 內技術規格 / API 文件 / ADR（另一層文件）。不實作非目標、不追加範圍外功能；發現規格衝突就停手回報 `SPEC_CHANGE_REQUIRED` 素材（含約束內解法嘗試證據）；commit 末尾加 `Spec-ID / Spec-Version / Spec-SHA256 / Acceptance` trailer；回報附「實作決策」清單。細則見 `~/.claude/acceptance/EXTERNAL_SPEC_PROTOCOL.md` 第 8 節。
 5. **同步更新規格書**（強制，與 code 同一 commit）：
    - 讀取 `~/.claude/products/<product>.md` 的「規格書與文件」區塊，找出該產品所有規格檔路徑
@@ -191,7 +192,7 @@ triage 出的「小改 / 大改」分類，除了決定你走模式 A / B，也�
 - [ ] Cache：有 cache 就有 invalidation（TTL + active）嗎？
 - [ ] Race condition：async await 前後有 capture state 比對嗎？
 - [ ] 推送依賴：有沒有補償路徑（reconnect / polling）？
-- [ ] Lint / build 是否通過
+- [ ] Lint / build 是否通過；測試只跑改到的 package／檔（整套要有使用者指示或寫得出的理由）
 - [ ] **規格書是否同步更新**（路徑取自 `~/.claude/products/<product>.md` 的「規格書與文件」區塊；行為變更必須在規格找到對應章節並更新；缺規格書必須在回報時提出）
 
 **自審發現問題 → 直接修，不要回報「有問題但沒修」。**

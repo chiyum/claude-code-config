@@ -80,6 +80,7 @@ Read `~/.claude/knowledge/INDEX.md` 頂部的「Playbook 層」（索引長大�
 
 ### Phase 3：回歸測試
 - 確認沒打壞既有功能（特別是相鄰模組）
+- **自動化測試只跑改動相關的 package／檔**：用 `git diff --name-only <base>..HEAD` 圈出改到的目錄，只跑那些目錄的 `go test`／`vitest`；不把整套 `pnpm test`／`go test ./...` 當回歸證據。整套只在交棒 prompt 明說「全部跑一輪」或改動跨切面（共用 util、型別、schema）時跑，並在回報寫理由
 - 產品配置若列出多渠道 / 多面（如多個訊息渠道、螢幕 / PDF / 公開頁），觸及任一渠道時其餘渠道快速確認
 
 ## 回報格式
