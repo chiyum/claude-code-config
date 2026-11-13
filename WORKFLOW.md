@@ -38,7 +38,7 @@ flowchart TD
       RevOK -->|"否（來回 ≤ 3 回合，護欄 A）"| S1
       RevOK -->|"超過 3 回合（自主模式：凍結記 blockers 續跑）"| Report["回報使用者裁決"]
       RevOK -->|是| DG{"開過 ui-designer?"}
-      DG -->|"是"| DR["design-reviewer 視覺 gate（反方）<br/>三視口截圖 × 六維度，以設計規格為基準（≤3 回合）"]
+      DG -->|"是"| DR["design-reviewer 視覺 gate（反方）<br/>三視口截圖 × 七維度，以設計規格為基準（≤3 回合）"]
       DR -->|"退修"| S1
       DG -->|"否（沒開正方不開反方）"| S2
       DR -->|"PASS"| S2["② 本地驗證＋反假驗收三層 gate<br/>QA/PM 逐條落地證據 evidence/ → verify-evidence.sh 確定性檢查<br/>→ 主 Claude 抽驗截圖 → 大改動加開反方 PM 找反例<br/>期望值須獨立於受測物（回推原始輸入或線上落庫，不拿自己產的計畫檔對）"]

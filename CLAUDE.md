@@ -115,7 +115,7 @@
    - **接著呼叫 `reviewer`**
    - reviewer 有意見 → 由主 Claude 把 reviewer 的問題清單回傳給 architect，兩者直到一致（最多回合 3 次，超過要回報使用者；**自主模式**下超限改為該項凍結記入 blockers、繼續其餘工作、最終回報一併列出）
    - **資安審查觸發（基礎設施面）**：當本任務屬「架設或重大變更**伺服器 / 部署環境 / 對外服務**」（新主機、新增或改對外 port、反向代理、tunnel、新 container stack、新部署 pipeline、DB/Redis 暴露面變更）時，環境架好後主 Claude 必呼叫 `security-auditor` 做防禦式資安審查（八維度：網路暴露面 / 認證存取 / 金鑰機敏 / TLS / 儲存 / 容器 / 反代 header / 日誌），輸出風險分級清單，🔴 高風險項退回 architect 修（與 reviewer 回合分開計）。與 reviewer 分工：reviewer 看程式碼，security-auditor 看執行環境。**純功能 / 純程式碼修改不觸發**；對外主動掃描需先取得使用者授權。
-   - **設計鏈成對觸發（正方 ui-designer × 反方 design-reviewer）**：任務含設計 / 切版 / 視覺意圖、或要「從零長出全新頁面」時，先由主 Claude 呼叫 `ui-designer` 產出設計規格（新視覺 / 風格重定義先出三 direction 靜態預覽給使用者挑；全新頁面自動走精簡規格模式）→ architect 照規格實作 → reviewer 通過後呼叫 `design-reviewer` 以該規格做三視口截圖驗收（構圖 / 間距 / 字體 / 色彩 / 動效 / 三態），退修回 architect，上限 3 回合（與 reviewer 回合分開計）。**沒開正方就不開反方**——既有版型微調、既有頁面加元件、純邏輯 / 後端一律不觸發，避免流程變重。交棒 architect 做 UI 時附上設計規格 / 基準（若有動效規格檔，一併提示依它實作動效）
+   - **設計鏈成對觸發（正方 ui-designer × 反方 design-reviewer）**：任務含設計 / 切版 / 視覺意圖、或要「從零長出全新頁面」時，先由主 Claude 呼叫 `ui-designer` 產出設計規格（新視覺 / 風格重定義先出三 direction 靜態預覽給使用者挑；全新頁面自動走精簡規格模式）→ architect 照規格實作 → reviewer 通過後呼叫 `design-reviewer` 以該規格做三視口截圖驗收（構圖 / 間距 / 字體 / 色彩 / 動效 / 三態 / 上手直覺性），退修回 architect，上限 3 回合（與 reviewer 回合分開計）。**沒開正方就不開反方**——既有版型微調、既有頁面加元件、純邏輯 / 後端一律不觸發，避免流程變重。交棒 architect 做 UI 時附上設計規格 / 基準（若有動效規格檔，一併提示依它實作動效）
    - 主 Claude 不直接改 code
 
 2. **本地驗證：QA + PM**

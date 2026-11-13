@@ -27,7 +27,7 @@ claude-code-config/
 │   ├── qa.md                  # QA：本地 + 線上測試
 │   ├── reviewer.md            # 審查員：code review
 │   ├── ui-designer.md         # 視覺設計師（正方）：動 code 前產設計規格 / 三 direction 預覽
-│   ├── design-reviewer.md     # 視覺審查員（反方）：三視口截圖六維度視覺驗收
+│   ├── design-reviewer.md     # 視覺審查員（反方）：三視口截圖七維度視覺驗收
 │   └── security-auditor.md    # 資安審查員（基礎設施面）：伺服器架好後八維度防禦式資安審查
 ├── hooks/
 │   ├── slack-notify.sh        # Stop hook：完成回覆後推 Slack
@@ -158,7 +158,7 @@ state 多記 `lane` / `estimated_minutes` / `gate_reruns` / `live_regressions` /
 | **qa** | 測試 | API curl + Playwright MCP 雙軌，本地→線上分階段 |
 | **pm** | 驗收 | 產品無關設計，每次從 INDEX.md 載入對應產品配置 |
 | **ui-designer** | 視覺設計（正方） | 設計/切版任務與全新頁面在動 code 前產出設計規格（token 對映、版面構圖、數值級動效 spec）；大型視覺先出三 direction 預覽供挑選 |
-| **design-reviewer** | 視覺驗收（反方） | 三視口截圖 + 六維度審查（構圖/間距/字體/色彩/動效/三態），以正方規格為基準退修；成對觸發，沒開正方不開反方 |
+| **design-reviewer** | 視覺驗收（反方） | 三視口截圖 + 七維度審查（構圖/間距/字體/色彩/動效/三態/上手直覺性），以正方規格為基準退修；成對觸發，沒開正方不開反方 |
 | **security-auditor** | 資安審查（基礎設施面） | 伺服器 / 部署環境架設或重大變更後，八維度防禦式審查（網路暴露面/認證存取/金鑰機敏/TLS/儲存/容器/反代 header/日誌），輸出風險分級清單；只審不改、不做攻擊性操作，對外主動掃描需授權；與 reviewer 分工——reviewer 看程式碼、本 agent 看執行環境 |
 
 ### 4. 產品配置體系
@@ -221,7 +221,7 @@ Skill 是可重複使用的自動化腳本，用自然語言觸發：
 
 ### 10. 設計雙 agent（正方 × 反方）
 
-設計 / 切版任務與全新頁面採「正方先設計、反方後驗收」：`ui-designer` 在動 code 前產出可直接實作的設計規格（禁形容詞、全數值），architect 照規格實作，`design-reviewer` 用 Playwright 三視口截圖對照**同一份規格**裁決退修（≤3 回合）。任務附有原稿圖檔（Figma 匯出 PNG）時，**原稿是最高基準**：反方每頁把原稿與實作成對打開、用 `magick` 取樣關鍵色碼列「原稿 vs 實作」表，報告加「原稿忠實度」列；主 Claude 的抽驗也必須原稿＋實作成對看（`DESIGN_FLOW.md` §6）——這是 2026-11-02 複盤的教訓：1,593 張原稿下載了、反方只開 1 張、審的是通用美感，結果使用者開站 1 小時抓到 3 處顏色不符。兩者成對觸發、日常小修不開，流程不變重。動畫實作建議搭配官方 gsap-skills plugin（`claude plugin install gsap-skills@gsap-skills`）。
+設計 / 切版任務與全新頁面採「正方先設計、反方後驗收」：`ui-designer` 在動 code 前產出可直接實作的設計規格（禁形容詞、全數值），architect 照規格實作，`design-reviewer` 用 Playwright 三視口截圖對照**同一份規格**裁決退修（≤3 回合）。任務附有原稿圖檔（Figma 匯出 PNG）時，**原稿是最高基準**：反方每頁把原稿與實作成對打開、用 `magick` 取樣關鍵色碼列「原稿 vs 實作」表，報告加「原稿忠實度」列；主 Claude 的抽驗也必須原稿＋實作成對看（`DESIGN_FLOW.md` §6）——這是 2026-11-02 複盤的教訓：1,593 張原稿下載了、反方只開 1 張、審的是通用美感，結果使用者開站 1 小時抓到 3 處顏色不符。反方另審「上手直覺性」：先不看規格、只看首屏猜這頁做什麼與第一步點哪，再不讀說明走完主要任務，並盤點多餘的說明文字與次要標籤；正方規格相應先寫「操作流程」與「文字預算」，architect 則有常駐的「介面文字守則」（預設不新增說明小字，新增要交代理由）——目標是使用者靠直覺就能上手。兩者成對觸發、日常小修不開，流程不變重。動畫實作建議搭配官方 gsap-skills plugin（`claude plugin install gsap-skills@gsap-skills`）。
 
 ### 11. Run 遙測與複盤迴圈（制度改動的量化基準 + L4 自我進化）
 
