@@ -18,7 +18,7 @@
 ## 2. 各級流程
 
 - **S**：architect 直接做（單檔且 ≤ 20 行時主 Claude 可自己改）→ build／lint 過 → commit → push → 部署後親自點一次。不開 reviewer、不開 PM、不寫凍結清單、不寫憲章；state 仍要建（含 `lane`、`estimated_minutes`）
-- **M**：Explore 盤點現況（≤ 5 分鐘；理解回述加一項「現況是什麼」）→ PM 凍結清單一次 → architect → `pre-review.sh` → reviewer 一輪 → 只跑與改動相關的本機測試一次 → push → 部署 → 10 分鐘線上檢查（版本字串、healthz／readyz、真的點一次新功能）。QA／PM 本地驗證合併為一次，證據照落地
+- **M**：Explore 盤點現況（≤ 5 分鐘；必含現有角色、入口、同類功能的權限與範圍，供理解回述第五件事盤點產品決策；理解回述加一項「現況是什麼」）→ PM 凍結清單一次 → architect → `pre-review.sh` → reviewer 一輪 → 只跑與改動相關的本機測試一次 → push → 部署 → 10 分鐘線上檢查（版本字串、healthz／readyz、真的點一次新功能）。QA／PM 本地驗證合併為一次，證據照落地
 - **L**：M 全套 ＋ 任務憲章 ＋ 線上唯讀預檢（env 鍵、資料形狀、runtime 角色權限）＋ 反方 PM 一次 ＋ PM 裁決與證據封印只在收尾做一次。含 migration 加回滾測試；改 DB 存取或鎖定 SQL 加以 runtime 角色跑的 SQL 權限稽核
 
 ## 3. 全 lane 共同規則（2026-09-28 拍板，自 2026-09-29 起適用所有產品）

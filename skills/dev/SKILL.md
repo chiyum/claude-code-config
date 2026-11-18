@@ -33,7 +33,7 @@ user-invocable: true
    - 同時寫 `started_at`（`date -Iseconds`）——這是遙測分帳切窗的起點，缺了整段 session 的量會全額計給本任務
    - 同時寫 `config_dir`（`echo "$CLAUDE_CONFIG_DIR"`）——看門狗復活時要用同一個 profile，缺了會找不到 session
    - 同時寫 `lane`、`lane_source`、`estimated_minutes`；之後 `gate_reruns`／`live_regressions`／`user_aborted` 發生時即時 +1 或標 true（收尾 `collect-run-metrics.py` 據此算 self_verdict）
-4. 步驟 0（M／L）：M／L 先派 Explore 盤點現況（≤ 5 分鐘）；主 Claude 寫「理解回述」四件事＋「現況是什麼」（我理解你要的／我假設的／我不會做的／一個具體例子；≤10 行白話）放 acceptance 檔頂部；PM 產三段式驗收清單；主 Claude 補**任務憲章**寫入同一份 acceptance 檔（格式見 `~/.claude/acceptance/README.md`）。標準模式把回述與清單一起呈現給使用者確認；auto 模式不停等但照樣寫、最終回報照樣列
+4. 步驟 0（M／L）：M／L 先派 Explore 盤點現況（≤ 5 分鐘，含現有角色／入口／同類功能的權限與範圍）；主 Claude 寫「理解回述」四件事＋第五件事「要你決定的產品決策」（九類盤點，auto 模式也照列照問，見 `acceptance/README.md`）＋「現況是什麼」（我理解你要的／我假設的／我不會做的／一個具體例子；≤10 行白話）放 acceptance 檔頂部；PM 產三段式驗收清單；主 Claude 補**任務憲章**寫入同一份 acceptance 檔（格式見 `~/.claude/acceptance/README.md`）。標準模式把回述與清單一起呈現給使用者確認；auto 模式不停等但照樣寫、最終回報照樣列
 
 ## 外部凍結規格模式（`--spec`；完整程序見 `~/.claude/acceptance/EXTERNAL_SPEC_PROTOCOL.md`）
 
@@ -55,7 +55,7 @@ user-invocable: true
 2. **提問三分流**：任何 agent（含主 Claude 自己）想提問時，先對照憲章——
    - 憲章預授權決策表能自答 → 自答並記入決策紀錄
    - 命中必問白名單（不可逆刪資料 / 花錢 / 資安 / 碰 prod / 需求自相矛盾）→ 才准中斷（state 標 `awaiting_user`）
-   - 其餘 → 寫進 `~/.claude/state/<slug>-questions.md`，不中斷，最終回報一併呈上。**questions.md 只收需要使用者決定的項目**，每條四行（問題／我暫採／影響／選項）；憲章內自答的決策、reviewer 回合判定、裁決理由一律寫 handoff.md，不得把 questions.md 寫成日誌
+   - 其餘 → 寫進 `~/.claude/state/<slug>-questions.md`，不中斷，最終回報一併呈上。**questions.md 只收需要使用者決定的項目**，每條四行（問題／我暫採／影響／選項；問題與選項用白話並附一個實際例子）；憲章內自答的決策、reviewer 回合判定、裁決理由一律寫 handoff.md，不得把 questions.md 寫成日誌
 3. **3 回合超限不停**：architect↔reviewer 超過 3 回合時，該項凍結記入 blockers、繼續其餘工作、最終回報一併列出（不中途打斷使用者）。
 4. **push 帳號**：讀產品配置「git 帳號歸屬」欄；缺欄才問一次，問完立刻寫回產品配置。
 
